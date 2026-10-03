@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { createMockGrove } from "./mockData";
 import { LocalGroveRepository } from "./repository";
+import { spaceVolunteers } from "./layout";
 import { deriveVolunteers, groveStats } from "./stats";
 import type { Activity, GroveData } from "./types";
 
@@ -25,7 +26,7 @@ export function todayISO() {
 export function useGrove() {
   const data = useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
   const today = todayISO();
-  const volunteers = useMemo(() => deriveVolunteers(data, today), [data, today]);
+  const volunteers = useMemo(() => spaceVolunteers(deriveVolunteers(data, today)), [data, today]);
   const stats = useMemo(() => groveStats(data, today), [data, today]);
   const addActivity = useCallback((a: Omit<Activity, "id">) => {
     state = repo.addActivity({ ...a, id: `${a.userId}-${Date.now()}` });

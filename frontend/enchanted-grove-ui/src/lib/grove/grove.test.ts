@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ACTIVITY_TYPES, FLOWERS, getMilestones, getTreeLevel } from "./config";
 import { computeStreak, deriveVolunteers } from "./stats";
+import { MIN_TREE_SPACING, spaceVolunteers } from "./layout";
 import type { Activity, GroveData } from "./types";
 
 describe("tree levels", () => {
@@ -87,5 +88,22 @@ describe("category flowers", () => {
       "community service": 1,
       management: 0,
     });
+  });
+});
+
+describe("grove tree spacing", () => {
+  it("moves colliding volunteer positions apart while keeping Saanvi anchored", () => {
+    const positioned = spaceVolunteers([
+      { id: "alex", name: "Alex", x: 0.5, y: 0.55, joinedAt: "2026-01-01" },
+      { id: "saanvi", name: "Saanvi", x: 0.5, y: 0.55, joinedAt: "2026-01-01" },
+      { id: "maya", name: "Maya", x: 0.5, y: 0.55, joinedAt: "2026-01-01" },
+    ]);
+
+    expect(positioned[1]).toMatchObject({ x: 0.5, y: 0.55 });
+    for (let i = 0; i < positioned.length; i++) {
+      for (let j = i + 1; j < positioned.length; j++) {
+        expect(Math.hypot(positioned[i]!.x - positioned[j]!.x, (positioned[i]!.y - positioned[j]!.y) * 1.5)).toBeGreaterThanOrEqual(MIN_TREE_SPACING);
+      }
+    }
   });
 });
