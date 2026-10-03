@@ -1,43 +1,41 @@
-# Enchanted grove: population and growth source map
+# Enchanted grove: population and growth plan
 
-Step 1: identify the upstream code. No application has been created yet.
+## Decisions so far
+- One person becomes one tree.
+- Each form response records an event name, hours for that event, and an optional task.
+- Hours in a submission are added to that person's accumulated total.
+- Tree height and canopy scale follow accumulated hours. The height cap remains configurable.
+- Glow is standard for every tree. Flowers are a later visual feature.
+- Planned stack: Flask + Python for form ingestion and grove data; React for the interactive display; Tiger Data for PostgreSQL storage.
 
-Source: https://github.com/srizzon/git-city
-Pinned commit: 9aeead41abd258910b5d20b7240fc31fe0b2aee4
-Selected original files are preserved under reference/git-city with the upstream LICENSE (AGPL-3.0). These files are reference material, not a runnable extraction; they depend on other upstream modules.
+## Step 1: define the records
+Keep each submitted work entry as history, with a stable person key, event name, hours, optional task, and submission timestamp. The stable person key is the Google OpenID Connect `sub` claim, restricted to verified NJIT Workspace accounts (`hd` = `njit.edu`), and is needed to combine a person's submissions into one tree. The app's per-person `GroveRecord` is a derived aggregate (person key, display name, total hours), not a copy of a vendor's raw form schema.
 
-## Growth calculations
-- src/lib/city-layout-core.ts: calcHeight (line 10), calcHeightV2 (43), calcWidthV2 (83), calcDepthV2 (97), calcLitPercentageV2 (115). These convert GitHub metrics into dimensions and illumination. The legacy height composite weights contributions 55%, stars 35%, repositories 10%; the newer formula combines six metrics. Heights range from 35 to 600 upstream world units.
-- Same file: resolveNorms and computeLayoutNorms normalize metrics across the population; hashStr and seededRandom provide stable visual variation.
-- src/lib/github.ts: DeveloperRecord and CityBuilding are the input/output contracts; generateCityLayout (302) handles layout entry, and calcBuildingDims (799) exposes dimension calculation.
+## Step 2: store and aggregate submissions
+Use Tiger Data as a PostgreSQL database. Store people separately from their timestamped hour entries. Flask validates incoming form records and inserts an entry; the grove API sums a person's entries to get total hours. Keep the original entries so event/task history and corrections remain possible. A time-partitioned table can be considered because entries have timestamps, but a normal PostgreSQL table is sufficient for a small project.
 
-## Population and placement
-- src/lib/city-sf-layout.ts: generateSFCityLayout and selectPlacedDevelopers implement the SF layout path. Inspect this alongside the legacy placement in github.ts before choosing an adaptation.
-- src/lib/city-lots.ts: assignCityLot calls a database RPC to allocate a fixed address. This is persistence-backed placement, not standalone geometry logic.
-- src/lib/create-developer.ts: createDeveloperFromGitHub creates a population member from GitHub data.
-- src/app/api/city/route.ts: serves developer records and city metadata from the database.
+## Step 3: record semester growth
+At each December and May boundary, save a snapshot per person with the cutoff date and cumulative hours. The difference between consecutive snapshots represents that semester's growth. Tree height can use current cumulative hours, while a React history view can show semester-by-semester growth. Make snapshot writes idempotent so rerunning a job does not create duplicates.
 
-## Rendering and animation
-- src/components/Building3D.tsx: BuildingRiseAnimation (281) scales the building upward during reveal; Building3D (524) renders individual buildings.
-- src/components/InstancedBuildings.tsx: renders many buildings efficiently and contains an instanced rise animation. Reuse the batching concept, but replace building geometry and window materials with trunks, canopies, flowers, and magical glow.
-- src/components/CityScene.tsx: connects layout output to the scene.
+## Step 4: connect Flask and React
+- Flask endpoints: receive/validate form entries; return current grove records; return a person's semester snapshots when requested.
+- React fetches grove records and renders one tree per person. Map `GroveRecord.total_hours` through the configured height scale and use the same normalized progress for canopy scale.
+- Keep form-provider-specific field mapping in one Flask adapter, separate from the grove calculations.
 
-## Ongoing data refresh
-- src/app/api/cron/refresh-buildings/route.ts: updates contributions from GitHub. It replaces the current-year slice in the stored lifetime total to avoid double-counting. This changes the metrics used for size; it is separate from reveal animation.
+## Step 5: build and review in order
+1. Confirm the form provider and stable person identifier.
+2. Add the database schema and Flask database connection.
+3. Add the form adapter and cumulative-hour query.
+4. Add a scheduled May/December snapshot job and an admin/manual way to rerun a missed snapshot.
+5. Connect the React scene to the grove API, then add flowers later.
 
-## Proposed next step (requires form semantics)
-1. Define a GroveRecord from the future form; do not retain GitHub field names.
-2. Decide what one plant represents and which answers drive height, canopy size, flowers, and glow.
-3. Implement pure grove size calculations with explicit bounds and stable ID-based variation.
-4. Implement stable grove placement so new submissions do not move existing plants.
-5. Replace building rendering with grove geometry, then wire a form adapter to the same pipeline.
+## Open details
+- Which field uniquely identifies a person (email, school ID, or another stable ID)? A name alone can collide or change.
+- Does each submission always add new hours, including corrections? If corrections are needed, decide whether entries can be edited/deleted or use signed adjustments.
+- Which local timezone/date defines the May and December semester cutoffs?
+- Do trees show all-time cumulative hours (assumed here), with semester growth shown separately?
+- What hours-to-height cap and visual style should the grove use?
 
-Open decisions: form field names and units conversion, preferred plant types and visual style. The agreed population is one plant per person, with submitted hours determining height.
-
-## Step 2: grove population and growth translation
-`grove.py` defines a form-neutral `GroveRecord`, a configurable linear `plant_height` mapping, deterministic positions, and `build_grove`. Each stable person ID yields one plant; duplicate IDs use the last record so updated hours resize the same plant. Supply `GroveScale` from the eventual form/product configuration. The intended app split is Flask for form ingestion and grove data, with React for rendering. The module does not assume form field names or a particular hours-to-height ratio. Canopy scale follows normalized hours-based growth; each plant receives the standard glow by default. Flowers are deferred until that visual layer is designed.
-
-
-
-
+## Upstream reference
+The population, metric-to-size, stable layout, and rendering ideas were traced in Git City at commit `9aeead41abd258910b5d20b7240fc31fe0b2aee4`. Selected upstream files are in `reference/git-city` with its AGPL-3.0 license. The grove model is a small independent Python implementation in `grove.py`; it does not depend on the upstream app.
 
