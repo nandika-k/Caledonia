@@ -9,9 +9,9 @@ The Flask backend handles Google OpenID Connect. It requests the `njit.edu` acco
 3. Create an OAuth client ID with application type **Web application**.
 4. Add this authorized redirect URI for local development:
 
-   `http://127.0.0.1:5000/auth/callback`
+   `http://localhost:5173/auth/callback`
 
-   For deployment, add the public HTTPS callback URI too, for example `https://your-host.example/auth/callback`. The URI must match `OAUTH_REDIRECT_URI` exactly.
+   For local development, use `OAUTH_REDIRECT_URI=http://localhost:5173/auth/callback` and `FRONTEND_URL=http://localhost:5173`. Vite proxies `/auth` and `/api` to Flask on port 5000, keeping the OAuth session cookie on the frontend origin. For deployment, add the public HTTPS callback URI too, for example `https://your-host.example/auth/callback`. The URI must match `OAUTH_REDIRECT_URI` exactly.
 
 5. Copy the OAuth client ID and secret into the local `.env` file. Never commit that file.
 
@@ -44,13 +44,17 @@ Open `http://127.0.0.1:5000`. `/auth/login` begins sign-in, `/api/me` returns th
 
 React should send users to the Flask `/auth/login` route using a full browser redirect. After login, Flask redirects to `FRONTEND_URL` if configured. React can then call `/api/me` with credentials included. The Google tokens and Tiger Data password remain on the Flask server.
 
+For local development, start Flask from the repository root with `python app.py`, then start the frontend from `frontend/enchanted-grove-ui` with `npm run dev`. Vite listens on port 5173 and proxies `/auth` and `/api` to Flask on port 5000. Adding hours requires a valid NJIT session. The frontend posts the complete form to `POST /api/activities`; Flask checks the session and CSRF token, validates the fields, and asks Gemini to classify the event. The API returns the normalized activity to the frontend.
+
+The returned activity is currently stored in browser local storage so the Grove demo updates immediately. Server/database persistence is still pending the Tiger Data integration; do not treat local storage as the shared volunteer-hours record.
+
 For production, use HTTPS, set `COOKIE_SECURE=true`, set a strong private `SECRET_KEY`, and set `OAUTH_REDIRECT_URI` to the exact public HTTPS callback URL registered in Google Cloud. Keep the OAuth client secret in the hosting provider's server-side secret settings.
 
 ## Files and routes
 
-- `app.py`: OAuth client, callback validation, session, profile endpoint, and logout.
+- `app.py`: OAuth client, callback validation, session, profile endpoint, activity validation/classification, and logout.
 - `.env.example`: names of required local settings; contains no credentials.
-- `requirements.txt`: Flask and Authlib dependencies.
+- `requirements.txt`: Flask/Authlib and Gemini classifier dependencies.
 
 Google requires the backend to validate the signed ID token. The domain hint only changes the account chooser; the `hd` check in the callback enforces the NJIT-only rule.
 

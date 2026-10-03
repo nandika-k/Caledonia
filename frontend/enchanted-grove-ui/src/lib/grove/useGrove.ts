@@ -31,5 +31,12 @@ export function useGrove() {
     state = repo.addActivity({ ...a, id: `${a.userId}-${Date.now()}` });
     listeners.forEach((l) => l());
   }, []);
-  return { volunteers, stats, addActivity };
+  const ensureVolunteer = useCallback((id: string, name: string) => {
+    const hash = [...id].reduce((value, char) => Math.imul(value ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
+    const x = 0.08 + (hash % 8400) / 10000;
+    const y = 0.18 + ((Math.imul(hash, 2654435761) >>> 0) % 7200) / 10000;
+    state = repo.addVolunteer({ id, name, x, y, joinedAt: todayISO() });
+    listeners.forEach((l) => l());
+  }, []);
+  return { volunteers, stats, addActivity, ensureVolunteer };
 }

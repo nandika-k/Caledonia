@@ -170,6 +170,7 @@ function CameraRig({ controls, focus }: { controls: React.RefObject<OrbitControl
 
 interface Props {
   volunteers: Volunteer[];
+  currentUserId: string | null;
   growingId: string | null;
   focusId: string | null;
   selectedId: string | null;
@@ -177,7 +178,7 @@ interface Props {
   onBackground: () => void;
 }
 
-export default function GroveScene({ volunteers, growingId, focusId, selectedId, onSelect, onBackground }: Props) {
+export default function GroveScene({ volunteers, currentUserId, growingId, focusId, selectedId, onSelect, onBackground }: Props) {
   const controls = useRef<OrbitControlsImpl>(null);
   const [hover, setHover] = useState<{ v: Volunteer; x: number; y: number } | null>(null);
   const focus = useMemo(() => {
@@ -221,6 +222,7 @@ export default function GroveScene({ volunteers, growingId, focusId, selectedId,
         <Suspense fallback={null}>
           <ForestTrees
             volunteers={volunteers}
+            currentUserId={currentUserId}
             onHover={(vol, e) => setHover(vol && e ? { v: vol, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } : null)}
             onClick={(vol, e) => onSelect(vol, { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY })}
             selectedId={selectedId}

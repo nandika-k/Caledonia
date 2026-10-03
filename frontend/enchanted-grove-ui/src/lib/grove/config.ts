@@ -51,13 +51,10 @@ export function getMilestones(hours: number): MilestoneRule[] {
 }
 
 export const ACTIVITY_TYPES = [
-  "GirlHacks",
-  "Event Support",
-  "Mentoring",
-  "Community Service",
-  "Workshop",
-  "Other",
+  "research",
+  "tutoring",
+  "environmental",
+  "community service",
+  "management",
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
-
-export const CURRENT_USER_ID = "saanvi";

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster, toast } from "sonner";
-import { CURRENT_USER_ID, getTreeLevel } from "@/lib/grove/config";
+import { ACTIVITY_TYPES, getTreeLevel } from "@/lib/grove/config";
 import { useGrove } from "@/lib/grove/useGrove";
+import type { ActivityType } from "@/lib/grove/config";
 import type { Volunteer } from "@/lib/grove/types";
-import { AddHoursModal } from "@/components/grove/AddHoursModal";
+import { AddHoursModal, type ActivitySubmission } from "@/components/grove/AddHoursModal";
 import { ProfilePanel } from "@/components/grove/ProfilePanel";
 
 const GroveScene = lazy(() => import("@/components/grove3d/GroveScene"));
@@ -24,7 +25,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { volunteers, stats, addActivity } = useGrove();
+  const { volunteers, stats, addActivity, ensureVolunteer } = useGrove();
+  const [auth, setAuth] = useState<{ google_sub: string; email: string; name: string | null; csrf_token: string } | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [card, setCard] = useState<{ v: Volunteer; x: number; y: number } | null>(null);
@@ -32,22 +35,86 @@ function Index() {
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/me", { credentials: "same-origin" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return await response.json() as { authenticated: boolean; user: { google_sub: string; email: string; name: string | null }; csrf_token: string };
+      })
+      .then((data) => {
+        if (!alive) return;
+        if (data?.authenticated) {
+          setAuth({ ...data.user, csrf_token: data.csrf_token });
+          ensureVolunteer(data.user.google_sub, data.user.name || data.user.email);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => { if (alive) setAuthLoading(false); });
+    return () => { alive = false; };
+  }, [ensureVolunteer]);
 
-  const me = volunteers.find((v) => v.id === CURRENT_USER_ID)!;
+  const userId = auth?.google_sub;
+  const me = userId ? volunteers.find((v) => v.id === userId) : undefined;
   const profile = volunteers.find((v) => v.id === profileId) ?? null;
   const cardV = card ? volunteers.find((v) => v.id === card.v.id) ?? card.v : null;
+
+  const handleActivitySubmit = async (activity: ActivitySubmission): Promise<ActivityType> => {
+    if (!auth || !userId) throw new Error("Sign in with your NJIT Google account to add hours.");
+    const response = await fetch("/api/activities", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": auth.csrf_token,
+      },
+      body: JSON.stringify({
+        event_name: activity.eventName,
+        description: activity.description,
+        hours: activity.hours,
+        internal_external: activity.internalExternal,
+        contact_email: activity.contactEmail,
+        org_person_name: activity.orgPersonName,
+        date: activity.date,
+      }),
+    });
+    const result = await response.json().catch(() => ({})) as {
+      activity?: { activityType?: string };
+      error?: string;
+    };
+    if (!response.ok) throw new Error(result.error || "Could not classify this activity. Please try again.");
+    const category = result.activity?.activityType;
+    if (!category || !ACTIVITY_TYPES.includes(category as ActivityType)) {
+      throw new Error("The classifier returned an unknown category. Please try again.");
+    }
+    const activityType = category as ActivityType;
+    ensureVolunteer(userId, auth.name || auth.email);
+    const before = getTreeLevel(me?.volunteerHours ?? 0).level;
+    addActivity({ ...activity, activityType, userId });
+    setAddOpen(false);
+    setFocus((f) => ({ id: userId, n: (f?.n ?? 0) + 1 }));
+    setGrowingId(null);
+    requestAnimationFrame(() => setGrowingId(userId));
+    setTimeout(() => setGrowingId(null), 1800);
+    const after = getTreeLevel((me?.volunteerHours ?? 0) + activity.hours);
+    toast(after.level !== before ? `✨ Your tree grew into ${/^[AEIOU]/.test(after.label) ? "an" : "a"} ${after.label}!` : "✨ Your contribution has helped the Grove grow!", {
+      description: `+${activity.hours} hours · ${activityType}`,
+    });
+    return activityType;
+  };
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-background text-foreground">
       {mounted ? (
         <Suspense fallback={<GroveLoading />}>
           <GroveScene
-        volunteers={volunteers}
-        selectedId={card?.v.id ?? null}
-        growingId={growingId}
-        focusId={focus ? `${focus.id}:${focus.n}` : null}
-        onSelect={(v, p) => setCard({ v, x: p.x, y: p.y })}
-        onBackground={() => setCard(null)}
+            volunteers={volunteers}
+            currentUserId={userId ?? null}
+            selectedId={card?.v.id ?? null}
+            growingId={growingId}
+            focusId={focus ? `${focus.id}:${focus.n}` : null}
+            onSelect={(v, p) => setCard({ v, x: p.x, y: p.y })}
+            onBackground={() => setCard(null)}
           />
         </Suspense>
       ) : (
@@ -57,8 +124,14 @@ function Index() {
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-border/60 bg-gradient-to-b from-background/80 to-transparent px-5 py-4 md:px-10">
         <h1 className="font-display-sc text-xl tracking-[0.18em] text-foreground md:text-2xl">🌳 Enchanted Grove</h1>
         <nav className="pointer-events-auto flex items-center gap-2">
-          <button onClick={() => setProfileId(CURRENT_USER_ID)} className="rounded-full px-4 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary">My Profile</button>
-          <button onClick={() => setAddOpen(true)} className="hidden rounded-full border border-primary/40 px-4 py-2 text-sm text-primary hover:bg-primary/10 md:block">🌱 Add Hours</button>
+          {auth ? (
+            <>
+              <button onClick={() => setProfileId(auth.google_sub)} className="rounded-full px-4 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary">My Profile</button>
+              <button onClick={() => setAddOpen(true)} className="hidden rounded-full border border-primary/40 px-4 py-2 text-sm text-primary hover:bg-primary/10 md:block">🌱 Add Hours</button>
+            </>
+          ) : (
+            <a href="/auth/login" className="rounded-full border border-primary/40 px-4 py-2 text-sm text-primary hover:bg-primary/10">{authLoading ? "Checking sign-in…" : "Sign in with NJIT Google"}</a>
+          )}
         </nav>
       </header>
 
@@ -80,10 +153,10 @@ function Index() {
       </p>
 
       <button
-        onClick={() => setAddOpen(true)}
+        onClick={() => { if (auth) setAddOpen(true); else window.location.assign("/auth/login"); }}
         className="btn-lime fab-pulse fixed bottom-16 left-1/2 z-20 -translate-x-1/2 rounded-full px-7 py-3.5 font-display text-lg tracking-wide md:bottom-8 md:left-auto md:right-24 md:translate-x-0"
       >
-        🌱 Add Hours
+        {auth ? "🌱 Add Hours" : "Sign in to Add Hours"}
       </button>
 
       {card && cardV && (
@@ -112,21 +185,10 @@ function Index() {
       <AddHoursModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSubmit={(a) => {
-          const before = getTreeLevel(me.volunteerHours).level;
-          addActivity({ ...a, userId: CURRENT_USER_ID });
-          setAddOpen(false);
-          setFocus((f) => ({ id: CURRENT_USER_ID, n: (f?.n ?? 0) + 1 }));
-          setGrowingId(null);
-          requestAnimationFrame(() => setGrowingId(CURRENT_USER_ID));
-          setTimeout(() => setGrowingId(null), 1800);
-          const after = getTreeLevel(me.volunteerHours + a.hours);
-          toast(after.level !== before ? `✨ Your tree grew into ${/^[AEIOU]/.test(after.label) ? "an" : "a"} ${after.label}!` : "✨ Your contribution has helped the Grove grow!", {
-            description: `+${a.hours} hours · ${a.activityType}`,
-          });
-        }}
+        onSubmit={handleActivitySubmit}
+        contactEmail={auth?.email ?? ""}
       />
-      <ProfilePanel volunteer={profile} isMe={profileId === CURRENT_USER_ID} onClose={() => setProfileId(null)} />
+      <ProfilePanel volunteer={profile} isMe={profileId === userId} onClose={() => setProfileId(null)} />
       <Toaster position="top-center" theme="dark" toastOptions={{ className: "glass-strong !text-foreground" }} />
     </main>
   );

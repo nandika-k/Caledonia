@@ -1,23 +1,10 @@
 import { useMemo, useRef } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { createInstances, useGLTF } from "@react-three/drei";
+import { createInstances } from "@react-three/drei";
 import * as THREE from "three";
-import { CURRENT_USER_ID, getTreeLevel, getTreeScale, type TreeLevel } from "@/lib/grove/config";
+import { getTreeLevel, getTreeScale, type TreeLevel } from "@/lib/grove/config";
 import type { Volunteer } from "@/lib/grove/types";
 import { toWorld } from "./GroveScene";
-import bush from "@/assets/models/plant_bushSmall.glb.asset.json";
-import small from "@/assets/models/tree_small.glb.asset.json";
-import defaultTree from "@/assets/models/tree_default.glb.asset.json";
-import oak from "@/assets/models/tree_oak.glb.asset.json";
-import detailed from "@/assets/models/tree_detailed.glb.asset.json";
-
-const MODELS: Record<TreeLevel, string> = {
-  seedling: bush.url,
-  small: small.url,
-  growing: defaultTree.url,
-  mature: oak.url,
-  enchanted: detailed.url,
-};
 
 // A GLB has several material groups. Each group is shared across every tree of its tier.
 // Separate instances preserve the source model's distinct bark, leaves, and blossom colors.
@@ -121,51 +108,21 @@ function makeCrown(height: number, tier: TreeLevel): Part[] {
   ];
 }
 
-function useTreeParts(url: string, height: number, level: TreeLevel): Part[] {
-  const { scene } = useGLTF(url);
+function useTreeParts(height: number, level: TreeLevel): Part[] {
   return useMemo(() => {
-    scene.updateWorldMatrix(true, true);
-    const bounds = new THREE.Box3().setFromObject(scene);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const factor = height / Math.max(bounds.max.y - bounds.min.y, 0.001);
-    const parts: Part[] = [];
-    scene.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-      const source = object.geometry as THREE.BufferGeometry;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      for (let i = 0; i < materials.length; i++) {
-        const geometry = source.clone();
-        // GLB pivot and scale are baked once, not separately for every volunteer.
-        geometry.applyMatrix4(object.matrixWorld);
-        geometry.translate(-center.x, -bounds.min.y, -center.z);
-        geometry.scale(factor, factor, factor);
-        if (geometry.groups.length) {
-          geometry.clearGroups();
-          source.groups.filter((g) => g.materialIndex === i).forEach((g) => geometry.addGroup(g.start, g.count, 0));
-        }
-        const original = materials[i] as THREE.MeshStandardMaterial;
-        const name = original.name.toLowerCase();
-        if (level !== "seedling" && (name.includes("leaf") || name.includes("grass"))) {
-          geometry.dispose();
-          continue;
-        }
-        const color = name.includes("wood") ? "#70553f" : name.includes("leaf") || name.includes("grass")
-          ? "#237655"
-          : original.color;
-        const material = new THREE.MeshStandardMaterial({
-          color,
-          roughness: 0.86,
-          metalness: 0,
-          flatShading: true,
-          side: original.side,
-          emissive: "#000000",
-          emissiveIntensity: 0.22,
-        });
-        parts.push({ geometry, material });
-      }
+    const trunkHeight = height * 0.64;
+    const trunkGeometry = new THREE.CylinderGeometry(height * 0.025, height * 0.055, trunkHeight, 7);
+    trunkGeometry.translate(0, trunkHeight / 2, 0);
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+      color: "#70553f",
+      roughness: 0.92,
+      flatShading: true,
     });
-    return level === "seedling" ? parts : [...parts, ...makeCrown(height, level)];
-  }, [scene, height, level]);
+    return [
+      { geometry: trunkGeometry, material: trunkMaterial },
+      ...makeCrown(height, level),
+    ];
+  }, [height, level]);
 }
 
 interface TreeProps {
@@ -228,16 +185,16 @@ export function Tree3D({ volunteer, Instances, selected, isMe, growing, onHover,
   );
 }
 
-type ForestProps = Pick<TreeProps, "onHover" | "onClick"> & { volunteers: Volunteer[]; selectedId: string | null; growingId: string | null };
+type ForestProps = Pick<TreeProps, "onHover" | "onClick"> & { volunteers: Volunteer[]; selectedId: string | null; growingId: string | null; currentUserId: string | null };
 
-function Tier({ level, volunteers, selectedId, growingId, onHover, onClick }: ForestProps & { level: TreeLevel }) {
+function Tier({ level, volunteers, selectedId, growingId, currentUserId, onHover, onClick }: ForestProps & { level: TreeLevel }) {
   const height = { seedling: 2.3, small: 3.8, growing: 4.6, mature: 5.2, enchanted: 6 }[level];
-  const parts = useTreeParts(MODELS[level], height, level);
+  const parts = useTreeParts(height, level);
   const pairs = useMemo(() => parts.map(() => createInstances()), [parts]);
   // Nested providers give each material group a separate shared instanced mesh.
   const renderTrees = () => volunteers.map((volunteer) => (
     <Tree3D key={volunteer.id} volunteer={volunteer} Instances={pairs.map((pair) => pair[1])}
-      selected={selectedId === volunteer.id} isMe={volunteer.id === CURRENT_USER_ID} growing={growingId === volunteer.id}
+      selected={selectedId === volunteer.id} isMe={volunteer.id === currentUserId} growing={growingId === volunteer.id}
       onHover={onHover} onClick={onClick} />
   ));
   const renderParts = (index: number): React.ReactNode => {
@@ -256,8 +213,9 @@ function Tier({ level, volunteers, selectedId, growingId, onHover, onClick }: Fo
 export function ForestTrees(props: ForestProps) {
   const byLevel = useMemo(() => {
     const groups = {} as Record<TreeLevel, Volunteer[]>;
-    for (const level of Object.keys(MODELS) as TreeLevel[]) groups[level] = props.volunteers.filter((v) => getTreeLevel(v.volunteerHours).level === level);
+    const levels: TreeLevel[] = ["seedling", "small", "growing", "mature", "enchanted"];
+    for (const level of levels) groups[level] = props.volunteers.filter((v) => getTreeLevel(v.volunteerHours).level === level);
     return groups;
   }, [props.volunteers]);
-  return <>{(Object.keys(MODELS) as TreeLevel[]).map((level) => <Tier key={level} level={level} {...props} volunteers={byLevel[level]} />)}</>;
+  return <>{(["seedling", "small", "growing", "mature", "enchanted"] as TreeLevel[]).map((level) => <Tier key={level} level={level} {...props} volunteers={byLevel[level]} />)}</>;
 }

@@ -16,7 +16,11 @@ export interface Activity {
   hours: number;
   activityType: ActivityType;
   date: string; // YYYY-MM-DD
-  description?: string | undefined;
+  eventName?: string;
+  description?: string;
+  internalExternal?: "internal" | "external";
+  contactEmail?: string;
+  orgPersonName?: string;
 }
 
 /** Derived view used by the UI. */
