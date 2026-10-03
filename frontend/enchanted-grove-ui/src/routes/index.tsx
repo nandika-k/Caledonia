@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
+import { Search } from "lucide-react";
 import { ACTIVITY_TYPES, getTreeLevel } from "@/lib/grove/config";
 import { useGrove } from "@/lib/grove/useGrove";
 import type { ActivityType } from "@/lib/grove/config";
@@ -29,6 +30,8 @@ function Index() {
   const [auth, setAuth] = useState<{ google_sub: string; email: string; name: string | null; csrf_token: string } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearchIndex, setActiveSearchIndex] = useState(0);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [card, setCard] = useState<{ v: Volunteer; x: number; y: number } | null>(null);
   const [growingId, setGrowingId] = useState<string | null>(null);
@@ -58,6 +61,25 @@ function Index() {
   const me = userId ? volunteers.find((v) => v.id === userId) : undefined;
   const profile = volunteers.find((v) => v.id === profileId) ?? null;
   const cardV = card ? volunteers.find((v) => v.id === card.v.id) ?? card.v : null;
+  const searchResults = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return volunteers
+      .filter((volunteer) => volunteer.name.toLocaleLowerCase().includes(query))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 8);
+  }, [searchQuery, volunteers]);
+
+  const selectSearchResult = (volunteer: Volunteer) => {
+    setProfileId(null);
+    setCard(null);
+    setFocus((current) => ({
+      id: volunteer.id,
+      n: current?.id === volunteer.id ? current.n + 1 : 1,
+    }));
+    setSearchQuery("");
+    setActiveSearchIndex(0);
+  };
 
   const handleActivitySubmit = async (activity: ActivitySubmission): Promise<ActivityType> => {
     if (!auth || !userId) throw new Error("Sign in with your NJIT Google account to add hours.");
@@ -110,7 +132,7 @@ function Index() {
           <GroveScene
             volunteers={volunteers}
             currentUserId={userId ?? null}
-            selectedId={card?.v.id ?? null}
+            selectedId={card?.v.id ?? focus?.id ?? null}
             growingId={growingId}
             focusId={focus ? `${focus.id}:${focus.n}` : null}
             onSelect={(v, p) => setCard({ v, x: p.x, y: p.y })}
@@ -134,6 +156,71 @@ function Index() {
           )}
         </nav>
       </header>
+
+      <div className="pointer-events-auto absolute left-1/2 top-[4.5rem] z-30 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2">
+        <div className="glass flex items-center gap-2 rounded-full px-4">
+          <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            type="search"
+            role="combobox"
+            aria-label="Search volunteers"
+            aria-autocomplete="list"
+            aria-expanded={searchQuery.trim().length > 0}
+            aria-controls="volunteer-search-results"
+            placeholder="Find a volunteer..."
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setActiveSearchIndex(0);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setSearchQuery("");
+                setActiveSearchIndex(0);
+              } else if (event.key === "ArrowDown" && searchResults.length > 0) {
+                event.preventDefault();
+                setActiveSearchIndex((index) => (index + 1) % searchResults.length);
+              } else if (event.key === "ArrowUp" && searchResults.length > 0) {
+                event.preventDefault();
+                setActiveSearchIndex((index) => (index - 1 + searchResults.length) % searchResults.length);
+              } else if (event.key === "Enter" && searchResults[activeSearchIndex]) {
+                event.preventDefault();
+                selectSearchResult(searchResults[activeSearchIndex]);
+              }
+            }}
+            className="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              aria-label="Clear volunteer search"
+              onClick={() => { setSearchQuery(""); setActiveSearchIndex(0); }}
+              className="text-lg leading-none text-muted-foreground hover:text-foreground"
+            >×</button>
+          )}
+        </div>
+        {searchQuery.trim() && (
+          <div id="volunteer-search-results" role="listbox" aria-label="Volunteer search results" className="glass-strong mt-2 max-h-72 overflow-y-auto rounded-2xl p-2 shadow-xl">
+            {searchResults.length > 0 ? searchResults.map((volunteer, index) => (
+              <button
+                key={volunteer.id}
+                type="button"
+                role="option"
+                aria-selected={index === activeSearchIndex}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveSearchIndex(index)}
+                onClick={() => selectSearchResult(volunteer)}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left ${index === activeSearchIndex ? "bg-primary/15" : "hover:bg-primary/10"}`}
+              >
+                <span className="truncate font-display text-base text-foreground">🌳 {volunteer.name}</span>
+                <span className="ml-3 shrink-0 text-xs text-muted-foreground">{volunteer.volunteerHours} hours</span>
+              </button>
+            )) : (
+              <p className="px-3 py-3 text-sm text-muted-foreground">No volunteers found.</p>
+            )}
+          </div>
+        )}
+      </div>
 
       <section className="glass absolute left-4 top-20 z-10 hidden rounded-2xl px-5 py-4 md:block md:left-8" aria-label="Grove statistics">
         <h2 className="font-display text-lg text-foreground">Grove Statistics</h2>
