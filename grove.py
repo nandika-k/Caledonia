@@ -2,7 +2,58 @@
 
 from dataclasses import asdict, dataclass
 import math
-from typing import Iterable
+from typing import Iterable, Mapping
+
+
+@dataclass(frozen=True)
+class ActivityEntry:
+    """One authenticated person's submitted activity; hours are additive."""
+
+    google_sub: str
+    email: str
+    activity_name: str
+    hours: float
+    description: str
+    activity_type: str
+    organization_person_name: str | None = None
+
+
+def activity_entry_from_form(
+    form: Mapping[str, object], authenticated_user: Mapping[str, str]
+) -> ActivityEntry:
+    """Validate form fields and attach identity from the verified login session."""
+    google_sub = authenticated_user.get("google_sub", "").strip()
+    email = authenticated_user.get("email", "").strip()
+    if not google_sub or not email:
+        raise ValueError("a signed-in user is required")
+
+    activity_name = str(form.get("activity_name", "")).strip()
+    description = str(form.get("description", "")).strip()
+    activity_type = str(form.get("activity_type", "")).strip().lower()
+    organizer = str(form.get("organization_person_name", "")).strip() or None
+    try:
+        hours = float(str(form.get("hours", "")).strip())
+    except ValueError as exc:
+        raise ValueError("hours must be a number") from exc
+
+    if not activity_name:
+        raise ValueError("activity name is required")
+    if not math.isfinite(hours) or hours <= 0:
+        raise ValueError("hours must be a finite number greater than zero")
+    if not description:
+        raise ValueError("description is required")
+    if activity_type not in {"internal", "external"}:
+        raise ValueError("activity type must be internal or external")
+
+    return ActivityEntry(
+        google_sub=google_sub,
+        email=email,
+        activity_name=activity_name,
+        hours=hours,
+        description=description,
+        activity_type=activity_type,
+        organization_person_name=organizer,
+    )
 
 
 @dataclass(frozen=True)

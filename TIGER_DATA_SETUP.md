@@ -36,8 +36,11 @@ CREATE TABLE hour_entries (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     person_id BIGINT NOT NULL REFERENCES people(id),
     event_name TEXT NOT NULL,
-    hours NUMERIC(8, 2) NOT NULL CHECK (hours > 0),
-    task TEXT,
+    description TEXT NOT NULL,
+    hours_served NUMERIC(8, 2) NOT NULL CHECK (hours_served > 0),
+    internal_external TEXT NOT NULL CHECK (internal_external IN ('internal', 'external')),
+    contact_email TEXT NOT NULL,
+    org_person_name TEXT NOT NULL,
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX hour_entries_person_time_idx
@@ -54,7 +57,7 @@ CREATE TABLE semester_snapshots (
 );
 ```
 
-`google_sub` is the stable Google account ID and links a person to their tree. `hour_entries` preserves each event submission. The current tree total is `SUM(hour_entries.hours)` for that person. A semester snapshot stores that cumulative total at the term cutoff; the difference from the prior snapshot is the term's growth.
+`google_sub` is the stable Google account ID and links the signed-in NJIT user to their tree. `contact_email` and `org_person_name` are details about the event entry. `hour_entries` preserves each submission. The current tree total is `SUM(hour_entries.hours_served)` for that signed-in person. A semester snapshot stores that cumulative total at the term cutoff; the difference from the prior snapshot is the term's growth.
 
 ## 3. Check setup
 
@@ -68,6 +71,7 @@ Google sign-in is configured in the app's Google Cloud OAuth settings, not in Ti
 
 - One tree per Google account.
 - Each event submission adds hours to the account's total.
-- Event name is required; task is optional.
+- Form fields: Event Name, Description, Hours Served, Internal/External, Contact Email, Org/Person Name.
+- Associate submitted hours with the signed-in NJIT Google account; do not use the contact email or organization/person name as the tree identity.
 - Height and canopy grow with accumulated total hours; glow is standard; flowers come later.
 - Snapshot each person's cumulative total at the December and May semester cutoffs.
