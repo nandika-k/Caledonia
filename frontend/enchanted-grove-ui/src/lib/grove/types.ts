@@ -1,4 +1,4 @@
-import type { ActivityType } from "./config";
+import type { ActivityType, StoredActivityType } from "./config";
 
 /** Stored identity. Replace the data source with NJIT Highlander data later. */
 export interface VolunteerRecord {
@@ -14,7 +14,7 @@ export interface Activity {
   id: string;
   userId: string;
   hours: number;
-  activityType: ActivityType;
+  activityType: StoredActivityType;
   date: string; // YYYY-MM-DD
   eventName?: string;
   description?: string;
@@ -30,6 +30,7 @@ export interface Volunteer extends VolunteerRecord {
   currentStreak: number;
   milestones: string[];
   treeLevel: string;
+  flowers: Record<ActivityType, number>;
 }
 
 export interface GroveData {

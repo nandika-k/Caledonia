@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getMilestones, getTreeLevel } from "./config";
-import { computeStreak } from "./stats";
+import { ACTIVITY_TYPES, FLOWERS, getMilestones, getTreeLevel } from "./config";
+import { computeStreak, deriveVolunteers } from "./stats";
+import type { Activity, GroveData } from "./types";
 
 describe("tree levels", () => {
   it("0 hours is a seedling", () => expect(getTreeLevel(0).level).toBe("seedling"));
@@ -28,5 +29,63 @@ describe("milestones", () => {
 describe("streak", () => {
   it("counts consecutive days ending today", () =>
     expect(computeStreak(["2026-10-01", "2026-10-02", "2026-10-03"], "2026-10-03")).toBe(3));
-  it("breaks on a gap", () => expect(computeStreak(["2026-09-30", "2026-10-03"], "2026-10-03")).toBe(1));
+  it("breaks on a gap", () =>
+    expect(computeStreak(["2026-09-30", "2026-10-03"], "2026-10-03")).toBe(1));
+});
+
+describe("category flowers", () => {
+  const entries = (activities: Pick<Activity, "activityType" | "hours">[]): GroveData => ({
+    volunteers: [{ id: "saanvi", name: "Saanvi", x: 0.5, y: 0.5, joinedAt: "2026-01-01" }],
+    activities: activities.map((activity, index) => ({
+      ...activity,
+      id: String(index),
+      userId: "saanvi",
+      date: "2026-10-03",
+    })),
+  });
+  const flowers = (activities: Pick<Activity, "activityType" | "hours">[]) =>
+    deriveVolunteers(entries(activities), "2026-10-03")[0]?.flowers;
+
+  it("maps each service category to its flower", () => {
+    expect(ACTIVITY_TYPES.map((type) => FLOWERS[type].name)).toEqual([
+      "Daisy",
+      "Sunflower",
+      "Lavender",
+      "Tulip",
+      "Rose",
+    ]);
+    expect(flowers(ACTIVITY_TYPES.map((activityType) => ({ activityType, hours: 2 })))).toEqual({
+      research: 1,
+      tutoring: 1,
+      environmental: 1,
+      "community service": 1,
+      management: 1,
+    });
+  });
+
+  it("carries category-hour remainders toward the next flower", () => {
+    expect(
+      flowers([
+        { activityType: "research", hours: 1 },
+        { activityType: "research", hours: 1.5 },
+        { activityType: "research", hours: 1.5 },
+      ])?.research,
+    ).toBe(2);
+  });
+
+  it("maps legacy mentoring entries to tutoring flowers", () => {
+    expect(
+      flowers([
+        { activityType: "GirlHacks", hours: 4 },
+        { activityType: "Mentoring", hours: 2 },
+        { activityType: "Community Service", hours: 2 },
+      ]),
+    ).toEqual({
+      research: 0,
+      tutoring: 1,
+      environmental: 0,
+      "community service": 1,
+      management: 0,
+    });
+  });
 });

@@ -58,3 +58,21 @@ export const ACTIVITY_TYPES = [
   "management",
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+export type LegacyActivityType =
+  "GirlHacks" | "Event Support" | "Mentoring" | "Community Service" | "Workshop" | "Other";
+export type StoredActivityType = ActivityType | LegacyActivityType;
+
+export const FLOWER_HOURS = 2;
+export const FLOWERS: Record<ActivityType, { name: string; meaning: string }> = {
+  research: { name: "Daisy", meaning: "Discovery and curiosity" },
+  tutoring: { name: "Sunflower", meaning: "Helping others learn" },
+  environmental: { name: "Lavender", meaning: "Caring for nature" },
+  "community service": { name: "Tulip", meaning: "Strengthening the community" },
+  management: { name: "Rose", meaning: "Leading and coordinating service" },
+};
+
+export function flowerCategory(type: StoredActivityType): ActivityType | null {
+  if (type === "Mentoring") return "tutoring";
+  if (type === "Community Service") return "community service";
+  return (ACTIVITY_TYPES as readonly string[]).includes(type) ? (type as ActivityType) : null;
+}

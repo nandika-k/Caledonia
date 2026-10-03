@@ -162,7 +162,7 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
   const rotateView = (direction: -1 | 1) => {
     const orbit = controls.current;
     if (!orbit) return;
-    orbit.rotateLeft(direction * Math.PI / 4);
+    orbit.setAzimuthalAngle(orbit.getAzimuthalAngle() - direction * Math.PI / 4);
     orbit.update();
   };
 
