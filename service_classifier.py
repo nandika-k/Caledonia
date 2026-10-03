@@ -33,6 +33,12 @@ def classify_service_hours(
 
     Reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the server environment.
     """
+    """
+    Return one category for an activity, based on its name and description.
+
+    Requires GEMINI_API_KEY in the server environment. The optional client and
+    model parameters make the method easy to reuse with a configured client.
+    """
     if not event_name.strip():
         raise ValueError("event_name must not be empty")
     if not description.strip():
@@ -67,7 +73,10 @@ Description: {description}
             temperature=0,
         ),
     )
-    if not response.text:
-        raise RuntimeError("Gemini returned no category for the activity.")
-    classification = ServiceClassification.model_validate_json(response.text)
+
+    classification = response.parsed
+    if classification is None:
+        if not response.text:
+            raise RuntimeError("Gemini returned no category for the activity.")
+        classification = ServiceClassification.model_validate_json(response.text)
     return classification.category.value
