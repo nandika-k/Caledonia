@@ -35,5 +35,9 @@ Selected original files are preserved under reference/git-city with the upstream
 Open decisions: form field names and units conversion, preferred plant types and visual style. The agreed population is one plant per person, with submitted hours determining height.
 
 ## Step 2: grove population and growth translation
-`src/lib/grove.ts` defines a form-neutral `GrovePerson`, a configurable linear `plantHeight` mapping, deterministic positions, and `buildGrove`. Each stable person ID yields one plant; duplicate IDs use the last record so updated hours resize the same plant. Supply `GroveScale` from the eventual form/product configuration. The module does not assume form field names or a particular hours-to-height ratio.
+`grove.py` defines a form-neutral `GroveRecord`, a configurable linear `plant_height` mapping, deterministic positions, and `build_grove`. Each stable person ID yields one plant; duplicate IDs use the last record so updated hours resize the same plant. Supply `GroveScale` from the eventual form/product configuration. The intended app split is Flask for form ingestion and grove data, with React for rendering. The module does not assume form field names or a particular hours-to-height ratio. Canopy scale follows normalized hours-based growth; each plant receives the standard glow by default. Flowers are deferred until that visual layer is designed.
+
+
+
+
 
