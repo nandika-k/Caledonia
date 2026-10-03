@@ -157,7 +157,7 @@ function Index() {
         </nav>
       </header>
 
-      <div className="pointer-events-auto absolute left-1/2 top-[4.5rem] z-30 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2">
+      <div className="pointer-events-auto absolute left-1/2 top-[5rem] z-30 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2">
         <div className="glass flex items-center gap-2 rounded-full px-4">
           <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
