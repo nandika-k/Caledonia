@@ -1,0 +1,172 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-lavender: var(--lavender);
+  --color-gold: var(--gold);
+  --color-lime: var(--lime);
+  --color-overlay: var(--overlay);
+}
+
+/* GirlHacks 2026 enchanted night palette — always dark. */
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.13 0.02 165);
+  --foreground: oklch(0.95 0.02 120);
+  --card: oklch(0.2 0.03 165);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.18 0.03 165);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.87 0.21 128);
+  --primary-foreground: oklch(0.2 0.05 160);
+  --secondary: oklch(0.25 0.04 165);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.24 0.03 165);
+  --muted-foreground: oklch(0.72 0.03 150);
+  --accent: oklch(0.72 0.13 300);
+  --accent-foreground: oklch(0.15 0.03 300);
+  --destructive: oklch(0.7 0.18 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.95 0.02 120 / 12%);
+  --input: oklch(0.1 0.02 165 / 60%);
+  --ring: oklch(0.87 0.21 128);
+  --overlay: oklch(0.08 0.02 165 / 55%);
+
+  --lime: oklch(0.87 0.21 128);
+  --lavender: oklch(0.76 0.13 300);
+  --blossom: oklch(0.8 0.1 340);
+  --gold: oklch(0.86 0.13 85);
+  --canopy: oklch(0.52 0.11 168);
+  --canopy-dark: oklch(0.4 0.09 170);
+  --canopy-light: oklch(0.72 0.16 140);
+  --bark: oklch(0.32 0.04 55);
+  --forest-deep: oklch(0.11 0.02 170);
+  --forest-mid: oklch(0.18 0.03 175);
+  --forest-floor: oklch(0.17 0.03 160);
+  --moonlight: oklch(0.32 0.05 260);
+  --moon: oklch(0.95 0.03 95);
+  --silhouette: oklch(0.13 0.025 170);
+  --path: oklch(0.26 0.03 90);
+  --rock: oklch(0.3 0.015 200);
+  --rock-light: oklch(0.42 0.015 200);
+  --mushroom: oklch(0.6 0.12 40);
+  --grove-shadow: oklch(0.05 0.01 170 / 50%);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { color-scheme: dark; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+}
+
+@utility font-display-sc {
+  font-family: "Cormorant SC", var(--font-display);
+  font-weight: 600;
+}
+
+@utility glass {
+  background: oklch(0.2 0.04 165 / 45%);
+  border: 1px solid oklch(0.95 0.02 120 / 12%);
+  backdrop-filter: blur(14px) saturate(130%);
+  box-shadow: 0 10px 40px -12px oklch(0.05 0.02 170 / 70%);
+}
+
+@utility glass-strong {
+  background: oklch(0.17 0.035 168 / 82%);
+  border: 1px solid oklch(0.76 0.13 300 / 22%);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 20px 60px -15px oklch(0.05 0.02 170 / 80%), 0 0 40px -20px var(--lavender);
+}
+
+@utility btn-lime {
+  background: var(--lime);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  box-shadow: 0 0 30px -6px var(--lime);
+  transition: transform 0.2s, box-shadow 0.2s;
+  &:hover { transform: translateY(-2px); box-shadow: 0 0 44px -4px var(--lime); }
+}
+
+@keyframes firefly {
+  0%, 100% { opacity: 0.1; transform: translate(0, 0); }
+  50% { opacity: 1; transform: translate(14px, -18px); }
+}
+.firefly { animation: firefly 8s ease-in-out infinite; filter: drop-shadow(0 0 6px var(--gold)); }
+
+@keyframes orbit { to { offset-distance: 100%; } }
+.firefly-orbit { animation: orbit 6s linear infinite; filter: drop-shadow(0 0 5px var(--gold)); }
+
+@keyframes flicker { 0%, 100% { opacity: 0.85; } 45% { opacity: 1; } 60% { opacity: 0.7; } }
+.lantern-flicker { animation: flicker 3s ease-in-out infinite; }
+
+.flower-glow { filter: drop-shadow(0 0 4px var(--lavender)); }
+.tree-node:hover { filter: drop-shadow(0 0 14px var(--lime)); }
+
+@keyframes grow-pop { 0% { filter: drop-shadow(0 0 0 var(--lime)); } 40% { filter: drop-shadow(0 0 30px var(--lime)); } 100% { filter: drop-shadow(0 0 0 var(--lime)); } }
+.tree-grow { animation: grow-pop 1.6s ease-out; }
+
+@keyframes burst {
+  from { transform: rotate(var(--a)) translateY(-60px); opacity: 1; }
+  to { transform: rotate(var(--a)) translateY(-200px); opacity: 0; }
+}
+.sparkle-burst circle { animation: burst 1.4s ease-out forwards; filter: drop-shadow(0 0 6px var(--gold)); }
+
+@keyframes drift { from { transform: translateX(-10%); } to { transform: translateX(10%); } }
+.fog {
+  background:
+    radial-gradient(ellipse 60% 30% at 30% 85%, oklch(0.76 0.13 300 / 10%), transparent),
+    radial-gradient(ellipse 50% 25% at 75% 90%, oklch(0.8 0.08 200 / 8%), transparent),
+    radial-gradient(ellipse 120% 80% at 50% 50%, transparent 55%, oklch(0.06 0.02 170 / 75%));
+  animation: drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes butterfly {
+  0% { left: -5%; top: 40%; transform: rotate(-8deg); }
+  25% { top: 28%; transform: rotate(8deg); }
+  50% { top: 45%; transform: rotate(-6deg); }
+  75% { top: 30%; }
+  100% { left: 105%; top: 38%; transform: rotate(6deg); }
+}
+.butterfly {
+  font-size: 22px;
+  filter: hue-rotate(40deg) drop-shadow(0 0 8px var(--lavender));
+  animation: butterfly 38s linear infinite;
+  opacity: 0.85;
+}
+
+@keyframes fab-pulse { 0%, 100% { box-shadow: 0 0 30px -6px var(--lime); } 50% { box-shadow: 0 0 50px 0 var(--lime); } }
+.fab-pulse { animation: fab-pulse 3s ease-in-out infinite; }
