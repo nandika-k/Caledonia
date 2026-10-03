@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import secrets
-from datetime import timedelta
+import math
+from datetime import date, timedelta
+from uuid import uuid4
 
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
@@ -114,6 +116,103 @@ def create_app() -> Flask:
         )
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.post("/api/classify-service")
+    def classify_service():
+        if not session.get("user"):
+            return jsonify({"error": "Sign in with an NJIT Google account first."}), 401
+        provided_token = request.headers.get("X-CSRF-Token", "")
+        if not secrets.compare_digest(provided_token, session.get("csrf_token", "")):
+            return jsonify({"error": "A valid CSRF token is required."}), 403
+
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify({"error": "Send Event Name and Description as JSON fields."}), 400
+        event_name = payload.get("event_name")
+        description = payload.get("description")
+        if not isinstance(event_name, str) or not event_name.strip():
+            return jsonify({"error": "Event Name is required."}), 400
+        if not isinstance(description, str) or not description.strip():
+            return jsonify({"error": "Description is required."}), 400
+        if len(event_name) > 200 or len(description) > 4000:
+            return jsonify({"error": "Event Name or Description is too long."}), 400
+
+        try:
+            from service_classifier import classify_service_hours
+
+            category = classify_service_hours(event_name.strip(), description.strip())
+        except Exception:
+            app.logger.exception("Gemini service classification failed")
+            return jsonify({"error": "Could not classify this activity. Please try again."}), 502
+        return jsonify({"category": category})
+
+    @app.post("/api/activities")
+    def create_activity():
+        """Validate and classify a form submission for the signed-in volunteer.
+
+        Persistence is intentionally left to the Tiger Data integration. The
+        frontend currently stores the returned activity in browser storage.
+        """
+        user = session.get("user")
+        if not user:
+            return jsonify({"error": "Sign in with an NJIT Google account first."}), 401
+        provided_token = request.headers.get("X-CSRF-Token", "")
+        if not secrets.compare_digest(provided_token, session.get("csrf_token", "")):
+            return jsonify({"error": "A valid CSRF token is required."}), 403
+
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "Send the activity form as a JSON object."}), 400
+
+        event_name = payload.get("event_name")
+        description = payload.get("description")
+        hours = payload.get("hours")
+        internal_external = payload.get("internal_external")
+        contact_email = payload.get("contact_email")
+        org_person_name = payload.get("org_person_name")
+        activity_date = payload.get("date")
+
+        if not isinstance(event_name, str) or not event_name.strip() or len(event_name) > 200:
+            return jsonify({"error": "Event Name is required and must be at most 200 characters."}), 400
+        if not isinstance(description, str) or not description.strip() or len(description) > 4000:
+            return jsonify({"error": "Description is required and must be at most 4000 characters."}), 400
+        if isinstance(hours, bool) or not isinstance(hours, (int, float)) or not math.isfinite(hours) or not 0 < hours <= 24:
+            return jsonify({"error": "Hours Served must be greater than 0 and no more than 24."}), 400
+        if internal_external not in ("internal", "external"):
+            return jsonify({"error": "Choose Internal or External."}), 400
+        if not isinstance(contact_email, str) or not contact_email.strip() or len(contact_email) > 320:
+            return jsonify({"error": "A valid Contact Email is required."}), 400
+        if not isinstance(org_person_name, str) or not org_person_name.strip() or len(org_person_name) > 200:
+            return jsonify({"error": "Org/Person Name is required and must be at most 200 characters."}), 400
+        try:
+            normalized_date = date.fromisoformat(activity_date).isoformat() if isinstance(activity_date, str) else date.today().isoformat()
+        except ValueError:
+            return jsonify({"error": "Date must use YYYY-MM-DD format."}), 400
+
+        try:
+            from service_classifier import classify_service_hours
+
+            category = classify_service_hours(event_name.strip(), description.strip())
+        except Exception:
+            app.logger.exception("Gemini service classification failed")
+            return jsonify({"error": "Could not classify this activity. Please try again."}), 502
+
+        return jsonify(
+            {
+                "activity": {
+                    "id": str(uuid4()),
+                    "userId": user["google_sub"],
+                    "eventName": event_name.strip(),
+                    "description": description.strip(),
+                    "hours": round(float(hours), 1),
+                    "activityType": category,
+                    "internalExternal": internal_external,
+                    "contactEmail": contact_email.strip(),
+                    "orgPersonName": org_person_name.strip(),
+                    "date": normalized_date,
+                }
+            }
+        ), 201
 
     @app.post("/auth/logout")
     def logout():
