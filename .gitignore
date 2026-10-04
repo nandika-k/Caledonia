@@ -4,3 +4,6 @@ venv
 .pnpm-store/
 __pycache__/
 *.py[cod]
+data/*.json
+njit_volunteering_events*.csv
+njit_volunteering_events*.json

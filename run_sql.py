@@ -1,35 +1,36 @@
-"""
-run_sql.py — runs a .sql file against the database using the credentials in .env.
-Place in the repo root (next to db.py).
+"""Run a SQL file against the configured hosted Postgres database."""
 
-    python run_sql.py db/schema.sql
-    python run_sql.py db/verify.sql
+from __future__ import annotations
 
-Each statement runs on its own (autocommit), which continuous aggregates require.
-"""
-import sys
+import argparse
+from pathlib import Path
 
 from db import get_conn
 
 
-def statements(path: str) -> list[str]:
-    with open(path, encoding="utf-8") as f:
-        lines = [ln.split("--", 1)[0] for ln in f]      # drop SQL comments
-    return [s.strip() for s in "".join(lines).split(";") if s.strip()]
+def statements(path: Path) -> list[str]:
+    lines = [line.split("--", 1)[0] for line in path.read_text(encoding="utf-8").splitlines()]
+    return [statement.strip() for statement in "\n".join(lines).split(";") if statement.strip()]
+
+
+def run_sql(path: Path) -> None:
+    with get_conn() as conn:
+        conn.autocommit = True
+        for sql in statements(path):
+            first_line = sql.splitlines()[0][:70]
+            result = conn.execute(sql)
+            print(f"ok: {first_line}")
+            if result.description:
+                for row in result.fetchall():
+                    print("    ", dict(row))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("sql_file", type=Path)
+    args = parser.parse_args()
+    run_sql(args.sql_file)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("usage: python run_sql.py path/to/file.sql")
-    with get_conn() as conn:
-        conn.autocommit = True
-        for sql in statements(sys.argv[1]):
-            first_line = sql.splitlines()[0][:70]
-            try:
-                cur = conn.execute(sql)
-            except Exception as e:
-                sys.exit(f"FAILED: {first_line}\n  {e}")
-            print(f"ok: {first_line}")
-            if cur.description:                          # a SELECT: show its rows
-                for row in cur.fetchall():
-                    print("    ", dict(row))
+    main()

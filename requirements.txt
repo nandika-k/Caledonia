@@ -1,4 +1,8 @@
-psycopg[binary]
-python-dotenv
-google-genai
-pydantic
+Authlib>=1.8,<2
+beautifulsoup4>=4.15,<5
+Flask>=3.1,<4
+google-genai>=1,<2
+psycopg[binary]>=3.2,<4
+pydantic>=2,<3
+python-dotenv>=1,<2
+requests>=2.31,<3
