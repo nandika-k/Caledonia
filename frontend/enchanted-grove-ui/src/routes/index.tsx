@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
 import { Search } from "lucide-react";
@@ -8,6 +8,7 @@ import type { ActivityType } from "@/lib/grove/config";
 import type { Volunteer } from "@/lib/grove/types";
 import { AddHoursModal, type ActivitySubmission } from "@/components/grove/AddHoursModal";
 import { FlowerBreakdown } from "@/components/grove/FlowerBreakdown";
+import { FountainControls } from "@/components/grove/FountainControls";
 import { ProfilePanel } from "@/components/grove/ProfilePanel";
 
 const GroveScene = lazy(() => import("@/components/grove3d/GroveScene"));
@@ -51,7 +52,18 @@ function Index() {
   const [growingId, setGrowingId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [waterPlaying, setWaterPlaying] = useState(true);
+  const [waterSpeed, setWaterSpeed] = useState(1);
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (preference.matches) setWaterPlaying(false);
+    const pauseForReducedMotion = (event: MediaQueryListEvent) => {
+      if (event.matches) setWaterPlaying(false);
+    };
+    preference.addEventListener("change", pauseForReducedMotion);
+    return () => preference.removeEventListener("change", pauseForReducedMotion);
+  }, []);
   useEffect(() => {
     let alive = true;
     fetch("/api/me", { credentials: "same-origin" })
@@ -163,6 +175,8 @@ function Index() {
             selectedId={card?.v.id ?? focus?.id ?? null}
             growingId={growingId}
             focusId={focus ? `${focus.id}:${focus.n}` : null}
+            waterPlaying={waterPlaying}
+            waterSpeed={waterSpeed}
             onSelect={(v, p) => setCard({ v, x: p.x, y: p.y })}
             onBackground={() => setCard(null)}
           />
@@ -171,11 +185,29 @@ function Index() {
         <GroveLoading />
       )}
 
+      <FountainControls
+        playing={waterPlaying}
+        onPlayingChange={setWaterPlaying}
+        speed={waterSpeed}
+        onSpeedChange={setWaterSpeed}
+      />
+
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-border/60 bg-gradient-to-b from-background/80 to-transparent px-5 py-4 md:px-10">
         <h1 className="font-display-sc text-xl tracking-[0.18em] text-foreground md:text-2xl">
           🌳 Caledonia
         </h1>
         <nav className="pointer-events-auto flex items-center gap-2">
+          <Link
+            to="/opportunities"
+            aria-label="Volunteer opportunities"
+            title="Volunteer opportunities"
+            className="rounded-full px-3 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary md:px-4"
+          >
+            <span className="md:hidden" aria-hidden="true">
+              🌿
+            </span>
+            <span className="hidden md:inline">Opportunities</span>
+          </Link>
           {auth && (
             <button
               onClick={() => setProfileId(auth.google_sub)}
@@ -185,11 +217,17 @@ function Index() {
             </button>
           )}
           {auth ? (
-            <button onClick={() => setAddOpen(true)} className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide">
+            <button
+              onClick={() => setAddOpen(true)}
+              className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide"
+            >
               🌱 Add Hours
             </button>
           ) : (
-            <a href="/auth/login" className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide">
+            <a
+              href="/auth/login"
+              className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide"
+            >
               {authLoading ? "Checking sign-in…" : "Sign in to add hours"}
             </a>
           )}

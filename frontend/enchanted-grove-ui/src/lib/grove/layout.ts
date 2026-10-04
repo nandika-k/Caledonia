@@ -1,11 +1,14 @@
 import type { VolunteerRecord } from "./types";
+import { isInSpringClearing } from "./placement";
 
 /** Minimum center-to-center tree spacing in normalized grove coordinates. */
-export const MIN_TREE_SPACING = 0.20;
+export const MIN_TREE_SPACING = 0.2;
 
 const X_BOUNDS = [0.04, 0.96] as const;
 const Y_BOUNDS = [0.14, 0.92] as const;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+const WORLD_SIZE_X = 64;
+const WORLD_SIZE_Z = 44;
 
 function distance(a: Pick<VolunteerRecord, "x" | "y">, b: Pick<VolunteerRecord, "x" | "y">) {
   return Math.hypot(a.x - b.x, (a.y - b.y) * 1.5);
@@ -15,11 +18,19 @@ function isInside(x: number, y: number) {
   return x >= X_BOUNDS[0] && x <= X_BOUNDS[1] && y >= Y_BOUNDS[0] && y <= Y_BOUNDS[1];
 }
 
+function clearsSpring(x: number, y: number) {
+  const worldX = (x - 0.5) * WORLD_SIZE_X;
+  const worldZ = (y - 0.5) * WORLD_SIZE_Z;
+  return !isInSpringClearing(worldX, worldZ);
+}
+
 /** Preserve stored positions where possible and move colliding trees to nearby open ground. */
 export function spaceVolunteers<T extends VolunteerRecord>(volunteers: T[]): T[] {
   const placed: VolunteerRecord[] = [];
   const positions = new Map<string, { x: number; y: number }>();
-  const ordered = [...volunteers].sort((a, b) => Number(b.id === "saanvi") - Number(a.id === "saanvi"));
+  const ordered = [...volunteers].sort(
+    (a, b) => Number(b.id === "saanvi") - Number(a.id === "saanvi"),
+  );
 
   for (const volunteer of ordered) {
     const origin = {
@@ -28,7 +39,9 @@ export function spaceVolunteers<T extends VolunteerRecord>(volunteers: T[]): T[]
     };
     let position = origin;
     const hasRoom = (candidate: { x: number; y: number }) =>
-      isInside(candidate.x, candidate.y) && placed.every((other) => distance(candidate, other) >= MIN_TREE_SPACING);
+      isInside(candidate.x, candidate.y) &&
+      clearsSpring(candidate.x, candidate.y) &&
+      placed.every((other) => distance(candidate, other) >= MIN_TREE_SPACING);
 
     if (!hasRoom(position)) {
       const idSeed = [...volunteer.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -52,7 +65,10 @@ export function spaceVolunteers<T extends VolunteerRecord>(volunteers: T[]): T[]
         for (let x = X_BOUNDS[0]; x <= X_BOUNDS[1]; x += 0.02) {
           for (let y = Y_BOUNDS[0]; y <= Y_BOUNDS[1]; y += 0.02) {
             const candidate = { x, y };
-            const nearest = placed.length ? Math.min(...placed.map((other) => distance(candidate, other))) : Infinity;
+            if (!clearsSpring(candidate.x, candidate.y)) continue;
+            const nearest = placed.length
+              ? Math.min(...placed.map((other) => distance(candidate, other)))
+              : Infinity;
             if (nearest > bestDistance) {
               bestDistance = nearest;
               position = candidate;
