@@ -1,0 +1,41 @@
+name: Build Discord bot image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "bot/**"
+      - ".github/workflows/build-discord-bot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  ACR_NAME: caledoniagrove20261004
+  ACR_LOGIN_SERVER: caledoniagrove20261004.azurecr.io
+  IMAGE_NAME: caledonia-discord-bot
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push Discord bot image to ACR
+        env:
+          IMAGE: caledoniagrove20261004.azurecr.io/caledonia-discord-bot:${{ github.sha }}
+        run: |
+          az acr login --name "$ACR_NAME"
+          docker build --tag "$IMAGE" ./bot
+          docker push "$IMAGE"
