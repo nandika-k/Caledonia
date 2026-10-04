@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from db import get_conn
 
 # Check Google AI Studio for the current Flash model name and set GEMINI_MODEL if it differs.
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash"
 
 
 def gemini_client() -> genai.Client:

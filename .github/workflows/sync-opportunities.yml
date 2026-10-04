@@ -41,3 +41,18 @@ jobs:
           PGPASSWORD: ${{ secrets.PGPASSWORD }}
           PGSSLMODE: ${{ secrets.PGSSLMODE }}
         run: python sync_opportunities.py --no-json
+
+      - name: Normalize Discord opportunities
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TIGERDATA_DATABASE_URL: ${{ secrets.TIGERDATA_DATABASE_URL }}
+          AZURE_POSTGRESQL_CONNECTIONSTRING: ${{ secrets.AZURE_POSTGRESQL_CONNECTIONSTRING }}
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGSSLMODE: ${{ secrets.PGSSLMODE }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+        run: python ingest_discord.py
