@@ -35,7 +35,7 @@ def local_category(event_name: str, description: str) -> str | None:
         ServiceCategory.TUTORING: r"\b(tutor(?:ing|ed|s)?|teach(?:ing)?|taught|mentoring|academic instruction)\b",
         ServiceCategory.RESEARCH: r"\b(research(?:ing)?|data collection|lab experiment(?:s)?)\b",
         ServiceCategory.ENVIRONMENTAL: r"\b(cleanup|clean[- ]up|conservation|sustainability|gardening|tree planting|litter|invasive plants)\b",
-        ServiceCategory.COMMUNITY_SERVICE: r"\b(food bank|food pantry|soup kitchen|food donation|clothing donation|njit house|meal distribution|meal|meal|meal packaging|meal preparation|meal service)\b",
+        ServiceCategory.COMMUNITY_SERVICE: r"\b(food bank|food pantry|soup kitchen|food donation|clothing donation|njit house|meal distribution|meal|meal|meal packaging|meal preparation|meal service|hygiene|soap)\b",
         ServiceCategory.MANAGEMENT: r"\b(event planning|organiz(?:ing|ed) (?:an? |the )?event|running (?:an? |the )?(?:club|organization)|club management)\b",
     }
     matches = [category.value for category, pattern in patterns.items() if re.search(pattern, text)]
