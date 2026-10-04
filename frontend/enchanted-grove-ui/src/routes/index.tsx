@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
 import { Search } from "lucide-react";
@@ -176,6 +176,12 @@ function Index() {
           🌳 Caledonia
         </h1>
         <nav className="pointer-events-auto flex items-center gap-2">
+          <Link
+            to="/opportunities"
+            className="rounded-full px-4 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary"
+          >
+            Opportunities
+          </Link>
           {auth && (
             <button
               onClick={() => setProfileId(auth.google_sub)}
