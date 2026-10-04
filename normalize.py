@@ -22,11 +22,15 @@ from db import get_conn
 
 # Check Google AI Studio for the current Flash model name and set GEMINI_MODEL if it differs.
 MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash"
+_client: genai.Client | None = None
 
 
 def gemini_client() -> genai.Client:
     """Create Gemini only when social-post parsing needs it."""
-    return genai.Client()  # reads GEMINI_API_KEY from the environment
+    global _client
+    if _client is None:
+        _client = genai.Client()  # reads GEMINI_API_KEY from the environment
+    return _client
 
 
 class ParsedEvent(BaseModel):
