@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import call, patch
+from google.genai import errors
 
 from ingest_discord import ingest_pending_discord
 
@@ -17,6 +18,21 @@ def post(message_id: str) -> dict:
 
 
 class IngestPendingDiscordTests(unittest.TestCase):
+    @patch("ingest_discord.mark_posts")
+    @patch("ingest_discord.ingest_social")
+    @patch("ingest_discord.pending_discord_posts")
+    def test_temporary_failure_preserves_post_and_continues(self, pending, ingest, mark):
+        pending.return_value = [post("1"), post("2")]
+        ingest.side_effect = [
+            errors.ServerError(503, {"error": {"message": "Busy"}}),
+            {"added": 1, "duplicate": 0, "skipped": 0},
+        ]
+        result = ingest_pending_discord()
+        self.assertEqual(result["failed"], 1)
+        self.assertEqual(result["added"], 1)
+        self.assertEqual(result["processed"], 1)
+        self.assertEqual(mark.call_args_list, [call(["1"], "failed"), call(["2"], "ingested")])
+
     @patch("ingest_discord.mark_posts")
     @patch("ingest_discord.ingest_social")
     @patch("ingest_discord.pending_discord_posts")

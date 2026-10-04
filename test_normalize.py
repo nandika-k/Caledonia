@@ -37,7 +37,7 @@ class NormalizeRetryTests(unittest.TestCase):
         ]
         self.assertIsNone(self.parse())
         self.assertEqual(generate.call_count, 2)
-        sleep.assert_called_once_with(2)
+        sleep.assert_called_once_with(5)
 
     @patch("normalize.time.sleep")
     @patch("normalize.gemini_client")
@@ -46,8 +46,8 @@ class NormalizeRetryTests(unittest.TestCase):
         generate.side_effect = errors.ServerError(503, {"error": {"message": "Busy"}})
         with self.assertRaises(errors.ServerError):
             self.parse()
-        self.assertEqual(generate.call_count, 3)
-        self.assertEqual([c.args[0] for c in sleep.call_args_list], [2, 4])
+        self.assertEqual(generate.call_count, 5)
+        self.assertEqual([c.args[0] for c in sleep.call_args_list], [5, 10, 20, 40])
 
     @patch("normalize._client", None)
     @patch("normalize.genai.Client")

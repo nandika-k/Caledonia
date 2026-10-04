@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from google.genai import errors
 
 from db import get_conn
 from ingest import ingest_social
@@ -56,6 +57,17 @@ def ingest_pending_discord(limit: int = 100) -> dict:
         print(f"Processing Discord post {index}/{len(rows)} ({message_id})...", flush=True)
         try:
             result = ingest_social([to_social_post(row)], source="discord")
+        except errors.APIError as error:
+            mark_posts([message_id], "failed")
+            if error.code not in (500, 502, 503, 504):
+                raise
+            counts["failed"] += 1
+            print(
+                f"Gemini unavailable ({error.code}) for post {message_id}; "
+                "saved for retry on the next run. Continuing with remaining posts.",
+                flush=True,
+            )
+            continue
         except Exception:
             mark_posts([message_id], "failed")
             raise

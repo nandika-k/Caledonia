@@ -87,7 +87,7 @@ Post text:
 {post_text}
 """
     response = None
-    for attempt in range(3):  # bounded retries for temporary server failures
+    for attempt in range(5):  # bounded retries for temporary server failures
         try:
             response = gemini_client().models.generate_content(
                 model=MODEL,
@@ -109,9 +109,9 @@ Post text:
                     flush=True,
                 )
                 raise
-            if e.code not in (500, 502, 503, 504) or attempt == 2:
+            if e.code not in (500, 502, 503, 504) or attempt == 4:
                 raise
-            wait = 2 ** attempt * 2  # 2, 4 seconds
+            wait = 2 ** attempt * 5  # 5, 10, 20, 40 seconds
             print(f"Gemini busy ({e.code}); retrying in {wait}s...", flush=True)
             time.sleep(wait)
     event = response.parsed
