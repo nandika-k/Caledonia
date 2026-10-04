@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { VineFrame, VinesBackground } from "@/components/VinesBackground";
 import { getOpportunities } from "@/lib/opportunities/service";
+import { NewarkOpportunities } from "@/components/NewarkOpportunities";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   applyFilters,
   CATEGORY_META,
@@ -40,7 +42,7 @@ export const Route = createFileRoute("/opportunities")({
   component: OpportunitiesPage,
 });
 
-const SOURCES: OpportunitySource[] = ["Highlander Hub", "Discord", "External"];
+const SOURCES: OpportunitySource[] = ["Highlander Hub", "Discord"];
 const SOURCE_STYLE: Record<OpportunitySource, string> = {
   "Highlander Hub": "border-gold/40 bg-gold/10 text-gold",
   Discord: "border-lavender/40 bg-lavender/10 text-lavender",
@@ -66,7 +68,10 @@ function OpportunitiesPage() {
   const { status, data, retry } = useOpportunities();
   const [filters, setFilters] = useState<OpportunityFilters>(DEFAULT_FILTERS);
   const [open, setOpen] = useState<OpportunityGroup | null>(null);
-  const groups = useMemo(() => groupOpportunities(data), [data]);
+  const groups = useMemo(
+    () => groupOpportunities(data.filter((o) => o.source !== "External")),
+    [data],
+  );
   const visible = useMemo(() => applyFilters(groups, filters), [groups, filters]);
   const set = <K extends keyof OpportunityFilters>(k: K, v: OpportunityFilters[K]) =>
     setFilters((f) => ({ ...f, [k]: v }));
@@ -107,91 +112,110 @@ function OpportunitiesPage() {
           </p>
         </section>
 
-        <section className="glass mt-8 rounded-2xl p-4 md:p-5" aria-label="Search and filters">
-          <input
-            type="search"
-            value={filters.query}
-            onChange={(e) => set("query", e.target.value)}
-            placeholder="Search opportunities, organizations, or keywords..."
-            aria-label="Search opportunities"
-            className="w-full rounded-full border border-border bg-input px-5 py-3 text-base outline-none placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-ring/30"
-          />
-          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <FilterSelect
-              label="Category"
-              value={filters.category}
-              onChange={(v) => set("category", v as OpportunityFilters["category"])}
-              options={[
-                ["all", "All Categories"],
-                ...OPPORTUNITY_CATEGORIES.map(
-                  (c) => [c, CATEGORY_META[c].label] as [string, string],
-                ),
-              ]}
-            />
-            <FilterSelect
-              label="Source"
-              value={filters.source}
-              onChange={(v) => set("source", v as OpportunityFilters["source"])}
-              options={[["all", "All Sources"], ...SOURCES.map((s) => [s, s] as [string, string])]}
-            />
-            <FilterSelect
-              label="Date"
-              value={filters.date}
-              onChange={(v) => set("date", v as OpportunityFilters["date"])}
-              options={[
-                ["any", "Any Date"],
-                ["today", "Today"],
-                ["week", "This Week"],
-                ["month", "This Month"],
-              ]}
-            />
-            <FilterSelect
-              label="Sort"
-              value={filters.sort}
-              onChange={(v) => set("sort", v as OpportunityFilters["sort"])}
-              options={[
-                ["soonest", "Soonest"],
-                ["latest", "Latest"],
-                ["relevant", "Most Relevant"],
-              ]}
-            />
-          </div>
-        </section>
+        <Tabs defaultValue="internal" className="mt-8">
+          <TabsList className="grid h-auto w-full grid-cols-2 p-1" aria-label="Opportunity type">
+            <TabsTrigger value="internal" className="py-3">
+              Internal (Campus)
+            </TabsTrigger>
+            <TabsTrigger value="external" className="py-3">
+              External (Newark)
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="internal">
+            <h2 className="mt-6 font-display text-3xl">Campus opportunities</h2>
+            <section className="glass mt-4 rounded-2xl p-4 md:p-5" aria-label="Search and filters">
+              <input
+                type="search"
+                value={filters.query}
+                onChange={(e) => set("query", e.target.value)}
+                placeholder="Search opportunities, organizations, or keywords..."
+                aria-label="Search opportunities"
+                className="w-full rounded-full border border-border bg-input px-5 py-3 text-base outline-none placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-ring/30"
+              />
+              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <FilterSelect
+                  label="Category"
+                  value={filters.category}
+                  onChange={(v) => set("category", v as OpportunityFilters["category"])}
+                  options={[
+                    ["all", "All Categories"],
+                    ...OPPORTUNITY_CATEGORIES.map(
+                      (c) => [c, CATEGORY_META[c].label] as [string, string],
+                    ),
+                  ]}
+                />
+                <FilterSelect
+                  label="Source"
+                  value={filters.source}
+                  onChange={(v) => set("source", v as OpportunityFilters["source"])}
+                  options={[
+                    ["all", "All Sources"],
+                    ...SOURCES.map((s) => [s, s] as [string, string]),
+                  ]}
+                />
+                <FilterSelect
+                  label="Date"
+                  value={filters.date}
+                  onChange={(v) => set("date", v as OpportunityFilters["date"])}
+                  options={[
+                    ["any", "Any Date"],
+                    ["today", "Today"],
+                    ["week", "This Week"],
+                    ["month", "This Month"],
+                  ]}
+                />
+                <FilterSelect
+                  label="Sort"
+                  value={filters.sort}
+                  onChange={(v) => set("sort", v as OpportunityFilters["sort"])}
+                  options={[
+                    ["soonest", "Soonest"],
+                    ["latest", "Latest"],
+                    ["relevant", "Most Relevant"],
+                  ]}
+                />
+              </div>
+            </section>
 
-        <section className="mt-8" aria-live="polite">
-          {status === "loading" && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }, (_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          )}
-          {status === "error" && (
-            <StateBox
-              icon="🍂"
-              title="We couldn't load opportunities right now."
-              text="Please try again in a moment."
-              action="Try Again"
-              onAction={retry}
-            />
-          )}
-          {status === "ready" && visible.length === 0 && (
-            <StateBox
-              icon="🌱"
-              title="No opportunities found"
-              text="Try changing your filters or searching for something else."
-              action="Clear Filters"
-              onAction={() => setFilters(DEFAULT_FILTERS)}
-            />
-          )}
-          {status === "ready" && visible.length > 0 && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {visible.map((g) => (
-                <OpportunityCard key={g.key} group={g} onOpen={() => setOpen(g)} />
-              ))}
-            </div>
-          )}
-        </section>
+            <section className="mt-8" aria-live="polite">
+              {status === "loading" && (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <SkeletonCard key={i} />
+                  ))}
+                </div>
+              )}
+              {status === "error" && (
+                <StateBox
+                  icon="🍂"
+                  title="We couldn't load opportunities right now."
+                  text="Please try again in a moment."
+                  action="Try Again"
+                  onAction={retry}
+                />
+              )}
+              {status === "ready" && visible.length === 0 && (
+                <StateBox
+                  icon="🌱"
+                  title="No opportunities found"
+                  text="Try changing your filters or searching for something else."
+                  action="Clear Filters"
+                  onAction={() => setFilters(DEFAULT_FILTERS)}
+                />
+              )}
+              {status === "ready" && visible.length > 0 && (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {visible.map((g) => (
+                    <OpportunityCard key={g.key} group={g} onOpen={() => setOpen(g)} />
+                  ))}
+                </div>
+              )}
+            </section>
+          </TabsContent>
+          <TabsContent value="external">
+            <NewarkOpportunities />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <OpportunityModal group={open} onClose={() => setOpen(null)} />
