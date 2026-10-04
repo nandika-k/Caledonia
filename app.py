@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 import secrets
 import math
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 from authlib.integrations.flask_client import OAuth
@@ -15,6 +16,18 @@ from flask import Flask, abort, jsonify, redirect, request, session, url_for
 NJIT_DOMAIN = "njit.edu"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 load_dotenv()
+
+
+def json_ready(value):
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
+
+
+def row_to_json(row: dict) -> dict:
+    return {key: json_ready(value) for key, value in row.items()}
 
 
 def create_app() -> Flask:
@@ -116,6 +129,23 @@ def create_app() -> Flask:
         )
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.get("/api/opportunities")
+    def opportunities():
+        try:
+            limit = min(max(int(request.args.get("limit", "100")), 1), 200)
+        except ValueError:
+            return jsonify({"error": "limit must be a number."}), 400
+
+        try:
+            from hours import list_events
+
+            rows = list_events(upcoming_only=True)
+        except Exception:
+            app.logger.exception("Could not load opportunities")
+            return jsonify({"error": "Could not load opportunities."}), 502
+
+        return jsonify({"opportunities": [row_to_json(dict(row)) for row in rows[:limit]]})
 
     @app.post("/api/classify-service")
     def classify_service():

@@ -35,6 +35,12 @@ OAUTH_REDIRECT_URI=https://<web-app-host>/auth/callback
 FRONTEND_URL=https://<web-app-host>
 COOKIE_SECURE=true
 GEMINI_API_KEY=<Gemini API key>
+PGHOST=<TigerData host>
+PGPORT=<TigerData port>
+PGDATABASE=<TigerData database>
+PGUSER=<TigerData user>
+PGPASSWORD=<TigerData password>
+PGSSLMODE=require
 ```
 
 Register the exact `OAUTH_REDIRECT_URI` under **Authorized redirect URIs** in the Google OAuth web client. Do not put secrets in the Docker image or frontend variables.
@@ -42,5 +48,7 @@ Register the exact `OAUTH_REDIRECT_URI` under **Authorized redirect URIs** in th
 ## 4. Verify
 
 Open `https://<web-app-host>/`, sign in with an `@njit.edu` Google account, then check that `/api/me` reports the authenticated user. Review **Monitoring > Log stream** if the container does not start.
+
+Check `https://<web-app-host>/api/opportunities` to confirm the Flask API can read current opportunities from TigerData.
 
 The current activity flow still keeps submitted Grove activities in browser storage; it does not persist them to Tiger Data or another shared database yet.

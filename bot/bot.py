@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 import discord
 import psycopg
@@ -20,12 +21,32 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 TEST_GUILD_ID = os.getenv("TEST_GUILD_ID", "").strip()
-DATABASE_URL = (
-    os.getenv("DATABASE_URL")
-    or os.getenv("TIGERDATA_DATABASE_URL")
-    or os.getenv("AZURE_POSTGRESQL_CONNECTIONSTRING")
-    or ""
-).strip()
+
+def database_url() -> str:
+    url = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("TIGERDATA_DATABASE_URL")
+        or os.getenv("AZURE_POSTGRESQL_CONNECTIONSTRING")
+        or ""
+    ).strip()
+    if url:
+        return url
+
+    required = ("PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD")
+    if all(os.getenv(name) for name in required):
+        user = quote_plus(os.environ["PGUSER"])
+        password = quote_plus(os.environ["PGPASSWORD"])
+        sslmode = os.getenv("PGSSLMODE", "require")
+        return (
+            f"postgresql://{user}:{password}"
+            f"@{os.environ['PGHOST']}:{os.environ['PGPORT']}/{os.environ['PGDATABASE']}"
+            f"?sslmode={sslmode}"
+        )
+
+    return ""
+
+
+DATABASE_URL = database_url()
 CHANNEL_IDS = {
     int(value.strip())
     for value in os.getenv("ANNOUNCEMENT_CHANNEL_IDS", "").split(",")
