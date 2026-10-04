@@ -100,10 +100,14 @@ export function groupOpportunities(list: Opportunity[]): OpportunityGroup[] {
         b.description.length - a.description.length,
     );
     const primary = sorted[0]!;
-    const seen = new Set<string>();
-    const sources = sorted
-      .filter((m) => !seen.has(m.source) && seen.add(m.source))
-      .map((m) => ({ source: m.source, url: m.source_url }));
+    const sourceMap = new Map<string, { source: Opportunity["source"]; url: string }>();
+    for (const m of sorted) {
+      const existing = sourceMap.get(m.source);
+      if (!existing || (!existing.url && m.source_url)) {
+        sourceMap.set(m.source, { source: m.source, url: m.source_url });
+      }
+    }
+    const sources = Array.from(sourceMap.values());
     return { key: sorted.map((m) => m.id).join("+"), primary, members: sorted, sources };
   });
 }

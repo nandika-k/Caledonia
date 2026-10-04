@@ -269,14 +269,27 @@ function SourceBadges({ g }: { g: OpportunityGroup }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {g.sources.length > 1 && <span className="text-xs text-muted-foreground">Sources:</span>}
-      {g.sources.map((s) => (
-        <span
-          key={s.source}
-          className={`rounded-full border px-2.5 py-0.5 text-[11px] tracking-wide ${SOURCE_STYLE[s.source]}`}
-        >
-          {s.source}
-        </span>
-      ))}
+      {g.sources.map((s) =>
+        s.url ? (
+          <a
+            key={s.source}
+            href={s.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] tracking-wide transition hover:-translate-y-0.5 hover:brightness-125 ${SOURCE_STYLE[s.source]}`}
+            aria-label={`Open ${s.source} source for ${g.primary.title}`}
+          >
+            {s.source} ↗
+          </a>
+        ) : (
+          <span
+            key={s.source}
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] tracking-wide ${SOURCE_STYLE[s.source]}`}
+          >
+            {s.source}
+          </span>
+        ),
+      )}
     </div>
   );
 }
