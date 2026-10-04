@@ -381,6 +381,7 @@ async def watch_here(interaction: discord.Interaction):
         )
         return
 
+    await interaction.response.defer(ephemeral=True, thinking=True)
     execute("""
         INSERT INTO monitored_channels
         (guild_id, channel_id, channel_name, added_by, added_at)
@@ -396,7 +397,7 @@ async def watch_here(interaction: discord.Interaction):
         "added_by": str(interaction.user),
         "added_at": datetime.now(timezone.utc).isoformat(),
     })
-    await interaction.response.send_message(
+    await interaction.followup.send(
         f"I'll collect likely service opportunity posts from {interaction.channel.mention}. "
         "Use `/scan_recent` to backfill recent announcements.",
         ephemeral=True,
@@ -409,6 +410,8 @@ async def unwatch_here(interaction: discord.Interaction):
     if interaction.guild is None or interaction.channel is None:
         await interaction.response.send_message("Use this command in a server channel.", ephemeral=True)
         return
+
+    await interaction.response.defer(ephemeral=True, thinking=True)
     rowcount = execute("""
         DELETE FROM monitored_channels
         WHERE guild_id = :guild_id AND channel_id = :channel_id
@@ -417,7 +420,7 @@ async def unwatch_here(interaction: discord.Interaction):
         "channel_id": str(interaction.channel.id),
     })
     message = "Stopped monitoring this channel." if rowcount else "This channel was not configured for monitoring."
-    await interaction.response.send_message(message, ephemeral=True)
+    await interaction.followup.send(message, ephemeral=True)
 
 
 @tree.command(name="scan_recent", description="Scan recent messages in this channel for service opportunities")
@@ -449,16 +452,17 @@ async def opportunities(interaction: discord.Interaction, limit: discord.app_com
         await interaction.response.send_message("Use this command in a server.", ephemeral=True)
         return
 
+    await interaction.response.defer(ephemeral=True, thinking=True)
     rows = opportunities_for_guild(interaction.guild.id, limit)
     if not rows:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "No opportunities collected yet. A moderator can run `/watch_here` in announcement channels.",
             ephemeral=True,
         )
         return
 
     body = "\n\n".join(row_to_line(row) for row in rows)
-    await interaction.response.send_message(body[:1900], ephemeral=True)
+    await interaction.followup.send(body[:1900], ephemeral=True)
 
 
 @tree.command(name="export_opportunities", description="Export collected service opportunities as CSV")
@@ -468,13 +472,14 @@ async def export_opportunities(interaction: discord.Interaction):
         await interaction.response.send_message("Use this command in a server.", ephemeral=True)
         return
 
+    await interaction.response.defer(ephemeral=True, thinking=True)
     rows = opportunities_for_guild(interaction.guild.id, limit=500)
     if not rows:
-        await interaction.response.send_message("No opportunities collected yet.", ephemeral=True)
+        await interaction.followup.send("No opportunities collected yet.", ephemeral=True)
         return
 
     file = discord.File(rows_to_csv(rows), filename="service-opportunities.csv")
-    await interaction.response.send_message(
+    await interaction.followup.send(
         f"Exported {len(rows)} collected opportunities.",
         file=file,
         ephemeral=True,
@@ -488,9 +493,10 @@ async def service_bot_status(interaction: discord.Interaction):
         await interaction.response.send_message("Use this command in a server.", ephemeral=True)
         return
 
+    await interaction.response.defer(ephemeral=True, thinking=True)
     rows = monitored_channels_for_guild(interaction.guild.id)
     watched = ", ".join(f"<#{row['channel_id']}>" for row in rows) if rows else "No channels configured yet."
-    await interaction.response.send_message(
+    await interaction.followup.send(
         f"Storage: hosted PostgreSQL/TigerData/Azure\nWatched channels: {watched}",
         ephemeral=True,
     )
