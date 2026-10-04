@@ -28,7 +28,8 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 COPY app.py service_classifier.py ./
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY deploy/container-entrypoint.sh /app/container-entrypoint.sh
-RUN chmod +x /app/container-entrypoint.sh
+RUN sed -i 's/\r$//' /app/container-entrypoint.sh \
+    && chmod +x /app/container-entrypoint.sh
 
 COPY --from=frontend-build /build/frontend/package.json /app/frontend/package.json
 COPY --from=frontend-build /build/frontend/.output /app/frontend/.output
