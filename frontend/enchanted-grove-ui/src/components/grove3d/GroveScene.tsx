@@ -8,6 +8,7 @@ import { getTreeLevel, getTreeScale } from "@/lib/grove/config";
 import { SPRING_POSITION } from "@/lib/grove/placement";
 import { ForestTrees } from "./Tree3D";
 import { Waterfall } from "./Waterfall3D";
+import { DeerHerd } from "./Deer3D";
 import { RotateCcw, RotateCw } from "lucide-react";
 
 const SIZE_X = 64;
@@ -52,7 +53,13 @@ function Instanced({
   );
 }
 
-function Environment() {
+function Environment({
+  volunteers,
+  focus,
+}: {
+  volunteers: Volunteer[];
+  focus: THREE.Vector3 | null;
+}) {
   const scene = useMemo(() => {
     const r = rng(7);
     const scatter = (n: number, s0: number, s1: number, y = 0) =>
@@ -122,6 +129,16 @@ function Environment() {
     }),
     [],
   );
+  const treePoints = useMemo(
+    () =>
+      volunteers.map((volunteer) => {
+        const [x, , z] = toWorld(volunteer);
+        return { x, z };
+      }),
+    [volunteers],
+  );
+  const rockPoints = useMemo(() => scene.rocks.map(({ p }) => ({ x: p[0], z: p[2] })), [scene]);
+  const focusPoint = focus ? { x: focus.x, z: focus.z } : null;
 
   return (
     <>
@@ -135,6 +152,7 @@ function Environment() {
       <Instanced geometry={g.flower} material={m.flower} items={scene.flowers} />
       <Instanced geometry={g.grass} material={m.grass} items={scene.grass} />
       <Instanced geometry={g.pine} material={m.pine} items={scene.ring} />
+      <DeerHerd trees={treePoints} rocks={rockPoints} focus={focusPoint} />
       {scene.lanterns.map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
           <mesh position-y={0.9} castShadow>
@@ -279,7 +297,7 @@ export default function GroveScene({
           shadow-camera-bottom={-35}
           shadow-bias={-0.0005}
         />
-        <Environment />
+        <Environment volunteers={volunteers} focus={focus} />
         <Waterfall position={SPRING_POSITION} playing={waterPlaying} speed={waterSpeed} />
         <Suspense fallback={null}>
           <ForestTrees
