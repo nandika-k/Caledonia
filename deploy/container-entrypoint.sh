@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-gunicorn --bind 127.0.0.1:5001 --workers 2 --access-logfile - --error-logfile - app:app &
+gunicorn --bind 127.0.0.1:5001 --workers 2 --access-logfile - --error-logfile - \
+    --access-logformat '%({x-request-id}o)s %(m)s %(U)s status=%(s)s duration=%(L)s' app:app &
 api_pid=$!
 
 NITRO_HOST=127.0.0.1 NITRO_PORT=3000 node /app/frontend/.output/server/index.mjs &

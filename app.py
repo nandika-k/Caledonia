@@ -10,8 +10,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 from authlib.integrations.flask_client import OAuth
+from authlib.integrations.base_client.errors import OAuthError
+from joserfc.errors import JoseError
 from dotenv import load_dotenv
-from flask import Flask, abort, jsonify, redirect, request, session, url_for
+from flask import Flask, abort, g, jsonify, redirect, request, session, url_for
+from requests.exceptions import RequestException
 
 NJIT_DOMAIN = "njit.edu"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
@@ -42,6 +45,29 @@ def create_app() -> Flask:
     if not app.config["SECRET_KEY"]:
         raise RuntimeError("Set SECRET_KEY before starting the app. See .env.example.")
 
+    @app.before_request
+    def identify_request():
+        g.request_id = uuid4().hex
+
+    @app.after_request
+    def identify_response(response):
+        response.headers["X-Request-ID"] = g.request_id
+        return response
+
+    def sign_in_failed(status: int, reason: str):
+        # Never log the callback query, authorization code, or provider tokens.
+        app.logger.warning("Google sign-in failed id=%s reason=%s", g.request_id, reason)
+        response = app.make_response((
+            "<!doctype html><title>Sign-in interrupted</title>"
+            "<main><h1>Sign-in interrupted</h1>"
+            "<p>Your sign-in could not be completed. Please start again.</p>"
+            '<a href="/auth/login">Start sign-in again</a>'
+            f"<p>Reference: {g.request_id}</p></main>", status
+        ))
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
     oauth = OAuth(app)
     client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
     client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
@@ -51,7 +77,7 @@ def create_app() -> Flask:
             client_id=client_id,
             client_secret=client_secret,
             server_metadata_url=GOOGLE_DISCOVERY_URL,
-            client_kwargs={"scope": "openid email profile"},
+            client_kwargs={"scope": "openid email profile", "default_timeout": 10},
         )
 
     def google_client():
@@ -84,15 +110,25 @@ def create_app() -> Flask:
         )
         # `hd` filters the account chooser. The callback independently checks
         # the signed ID token claim, which is the actual access restriction.
-        return google_client().authorize_redirect(
-            callback_url,
-            hd=NJIT_DOMAIN,
-            prompt="select_account",
-        )
+        try:
+            return google_client().authorize_redirect(
+                callback_url,
+                hd=NJIT_DOMAIN,
+                prompt="select_account",
+            )
+        except RequestException as error:
+            return sign_in_failed(503, type(error).__name__)
 
     @app.get("/auth/callback")
     def auth_callback():
-        token = google_client().authorize_access_token()
+        try:
+            token = google_client().authorize_access_token(timeout=10)
+        except (OAuthError, JoseError) as error:
+            # State/nonce/signature checks remain enforced. Never accept an
+            # unverified identity just because a callback failed.
+            return sign_in_failed(400, type(error).__name__)
+        except RequestException as error:
+            return sign_in_failed(503, type(error).__name__)
         claims = token.get("userinfo")
         if not claims:
             abort(401, description="Google did not return verified sign-in information.")
@@ -120,6 +156,8 @@ def create_app() -> Flask:
         user = session.get("user")
         if not user:
             return jsonify({"authenticated": False}), 401
+        if not session.get("csrf_token"):
+            session["csrf_token"] = secrets.token_urlsafe(32)
         response = jsonify(
             {
                 "authenticated": True,

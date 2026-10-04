@@ -52,3 +52,19 @@ Open `https://<web-app-host>/`, sign in with an `@njit.edu` Google account, then
 Check `https://<web-app-host>/api/opportunities` to confirm the Flask API can read current opportunities from TigerData.
 
 The current activity flow still keeps submitted Grove activities in browser storage; it does not persist them to Tiger Data or another shared database yet.
+
+## Intermittent Google callback errors
+
+Callback failures now show a retry link and a reference ID. In Azure Log stream,
+search for `Google sign-in failed id=` and that ID. `MismatchingStateError`
+indicates that the callback state did not match the browser session; check for
+replayed/expired callbacks, missing cookies, or differing `SECRET_KEY` settings
+across instances. Keep one stable secret across instances and deployments.
+Never disable OAuth state or nonce validation to work around this error.
+
+Network failures return 503; OAuth/token validation failures return 400. Start
+again at `/auth/login` instead of refreshing the callback URL. Google HTTP
+requests have a 10-second timeout. Backend responses include `X-Request-ID`;
+Gunicorn logs that ID with the path/status. Nginx logs its own request ID plus
+the path and upstream status. Access logs omit query strings so authorization
+codes are not recorded there. These changes require a new container deployment.
