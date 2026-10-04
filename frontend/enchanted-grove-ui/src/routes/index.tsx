@@ -234,9 +234,9 @@ function Index() {
         </nav>
       </header>
 
-      <div className="pointer-events-auto absolute left-1/2 top-[5rem] z-30 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2">
-        <div className="glass flex items-center gap-2 rounded-full px-4">
-          <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="pointer-events-auto absolute left-1/2 top-[5rem] z-30 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2">
+        <div className="glass-strong flex items-center gap-3 rounded-full border border-primary/50 px-5 shadow-[0_0_24px_-8px_var(--lime)] transition focus-within:border-primary focus-within:shadow-[0_0_30px_-6px_var(--lime)]">
+          <Search aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
           <input
             type="search"
             role="combobox"
@@ -244,7 +244,7 @@ function Index() {
             aria-autocomplete="list"
             aria-expanded={searchQuery.trim().length > 0}
             aria-controls="volunteer-search-results"
-            placeholder="Find a volunteer..."
+            placeholder="Search volunteers by name..."
             value={searchQuery}
             onChange={(event) => {
               setSearchQuery(event.target.value);
@@ -267,7 +267,7 @@ function Index() {
                 selectSearchResult(searchResults[activeSearchIndex]);
               }
             }}
-            className="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="h-12 min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-foreground/70"
           />
           {searchQuery && (
             <button
