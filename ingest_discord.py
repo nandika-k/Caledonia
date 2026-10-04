@@ -50,15 +50,21 @@ def ingest_pending_discord(limit: int = 100) -> dict:
     if not rows:
         return {"processed": 0, "added": 0, "duplicate": 0, "skipped": 0, "failed": 0}
 
-    processed_ids = [row["message_id"] for row in rows]
-    try:
-        counts = ingest_social([to_social_post(row) for row in rows], source="discord")
-    except Exception:
-        mark_posts(processed_ids, "failed")
-        raise
+    counts = {"processed": 0, "added": 0, "duplicate": 0, "skipped": 0, "failed": 0}
+    for row in rows:
+        message_id = row["message_id"]
+        try:
+            result = ingest_social([to_social_post(row)], source="discord")
+        except Exception:
+            mark_posts([message_id], "failed")
+            raise
 
-    mark_posts(processed_ids, "ingested")
-    return {"processed": len(rows), **counts, "failed": 0}
+        mark_posts([message_id], "ingested")
+        counts["processed"] += 1
+        for key in ("added", "duplicate", "skipped"):
+            counts[key] += result[key]
+
+    return counts
 
 
 if __name__ == "__main__":
