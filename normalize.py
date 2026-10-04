@@ -22,7 +22,11 @@ from db import get_conn
 
 # Check Google AI Studio for the current Flash model name and set GEMINI_MODEL if it differs.
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-client = genai.Client()  # reads GEMINI_API_KEY from the environment
+
+
+def gemini_client() -> genai.Client:
+    """Create Gemini only when social-post parsing needs it."""
+    return genai.Client()  # reads GEMINI_API_KEY from the environment
 
 
 class ParsedEvent(BaseModel):
@@ -78,7 +82,7 @@ Post text:
     response = None
     for attempt in range(5):                  # retry when Google is overloaded (503) or rate-limiting (429)
         try:
-            response = client.models.generate_content(
+            response = gemini_client().models.generate_content(
                 model=MODEL,
                 contents=prompt,
                 config={
