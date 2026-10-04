@@ -12,6 +12,8 @@ from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, redirect, request, session, url_for
 
+from opportunities_store import list_current_opportunities
+
 NJIT_DOMAIN = "njit.edu"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 load_dotenv()
@@ -213,6 +215,17 @@ def create_app() -> Flask:
                 }
             }
         ), 201
+
+    @app.get("/api/opportunities")
+    def opportunities():
+        limit = request.args.get("limit", "100")
+        try:
+            parsed_limit = min(max(int(limit), 1), 500)
+        except ValueError:
+            abort(400, description="limit must be an integer.")
+
+        rows = list_current_opportunities(limit=parsed_limit)
+        return jsonify({"opportunities": rows})
 
     @app.post("/auth/logout")
     def logout():

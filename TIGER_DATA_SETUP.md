@@ -55,6 +55,25 @@ CREATE TABLE semester_snapshots (
     captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (person_id, term_label)
 );
+
+CREATE TABLE service_opportunities (
+    source TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    organization_name TEXT NOT NULL,
+    organization_id TEXT,
+    location TEXT,
+    starts_on TIMESTAMPTZ,
+    ends_on TIMESTAMPTZ,
+    description TEXT,
+    event_url TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (source, event_id)
+);
+CREATE INDEX service_opportunities_starts_on_idx
+    ON service_opportunities (starts_on);
+CREATE INDEX service_opportunities_ends_on_idx
+    ON service_opportunities (ends_on);
 ```
 
 `google_sub` is the stable Google account ID and links the signed-in NJIT user to their tree. `contact_email` and `org_person_name` are details about the event entry. `hour_entries` preserves each submission. The current tree total is `SUM(hour_entries.hours_served)` for that signed-in person. A semester snapshot stores that cumulative total at the term cutoff; the difference from the prior snapshot is the term's growth.
@@ -75,3 +94,30 @@ Google sign-in is configured in the app's Google Cloud OAuth settings, not in Ti
 - Associate submitted hours with the signed-in NJIT Google account; do not use the contact email or organization/person name as the tree identity.
 - Height and canopy grow with accumulated total hours; glow is standard; flowers come later.
 - Snapshot each person's cumulative total at the December and May semester cutoffs.
+
+## Scraped opportunities sync
+
+`sync_opportunities.py` scrapes current/upcoming NJIT Engage events tagged as Volunteering and upserts them into `service_opportunities`.
+
+Run once:
+
+```powershell
+python sync_opportunities.py
+```
+
+Run as an always-on worker:
+
+```powershell
+python sync_opportunities.py --forever
+```
+
+For Azure, deploy the Flask app normally and run the sync script as either:
+
+- an Azure Container Apps job on a schedule, or
+- a second always-on worker container using `python sync_opportunities.py --forever`.
+
+The frontend reads opportunities through the Flask endpoint:
+
+```text
+GET /api/opportunities
+```
