@@ -173,30 +173,24 @@ function Index() {
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-border/60 bg-gradient-to-b from-background/80 to-transparent px-5 py-4 md:px-10">
         <h1 className="font-display-sc text-xl tracking-[0.18em] text-foreground md:text-2xl">
-          🌳 Enchanted Grove
+          🌳 Caledonia
         </h1>
         <nav className="pointer-events-auto flex items-center gap-2">
-          {auth ? (
-            <>
-              <button
-                onClick={() => setProfileId(auth.google_sub)}
-                className="rounded-full px-4 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary"
-              >
-                My Profile
-              </button>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="hidden rounded-full border border-primary/40 px-4 py-2 text-sm text-primary hover:bg-primary/10 md:block"
-              >
-                🌱 Add Hours
-              </button>
-            </>
-          ) : (
-            <a
-              href="/auth/login"
-              className="rounded-full border border-primary/40 px-4 py-2 text-sm text-primary hover:bg-primary/10"
+          {auth && (
+            <button
+              onClick={() => setProfileId(auth.google_sub)}
+              className="rounded-full px-4 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary"
             >
-              {authLoading ? "Checking sign-in…" : "Sign in with NJIT Google"}
+              My Profile
+            </button>
+          )}
+          {auth ? (
+            <button onClick={() => setAddOpen(true)} className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide">
+              🌱 Add Hours
+            </button>
+          ) : (
+            <a href="/auth/login" className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide">
+              {authLoading ? "Checking sign-in…" : "Sign in to add hours"}
             </a>
           )}
         </nav>
@@ -307,16 +301,6 @@ function Index() {
       <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 hidden -translate-x-1/2 font-display text-lg italic text-foreground/60 lg:block">
         Every contribution helps the Grove grow.
       </p>
-
-      <button
-        onClick={() => {
-          if (auth) setAddOpen(true);
-          else window.location.assign("/auth/login");
-        }}
-        className="btn-lime fab-pulse fixed bottom-16 left-1/2 z-20 -translate-x-1/2 rounded-full px-7 py-3.5 font-display text-lg tracking-wide md:bottom-8 md:left-auto md:right-24 md:translate-x-0"
-      >
-        {auth ? "🌱 Add Hours" : "Sign in to Add Hours"}
-      </button>
 
       {card && cardV && (
         <div
