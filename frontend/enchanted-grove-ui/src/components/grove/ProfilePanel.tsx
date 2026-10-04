@@ -7,10 +7,14 @@ export function ProfilePanel({
   volunteer,
   isMe,
   onClose,
+  onLogout,
+  loggingOut = false,
 }: {
   volunteer: Volunteer | null;
   isMe: boolean;
   onClose: () => void;
+  onLogout?: () => void;
+  loggingOut?: boolean;
 }) {
   if (!volunteer) return null;
   const level = getTreeLevel(volunteer.volunteerHours);
@@ -88,6 +92,16 @@ export function ProfilePanel({
             year: "numeric",
           })}
         </p>
+        {isMe && onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={loggingOut}
+            className="mt-6 shrink-0 rounded-full border border-border px-4 py-3 text-sm text-foreground hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
+          >
+            {loggingOut ? "Logging out…" : "Log out"}
+          </button>
+        )}
       </aside>
     </div>
   );

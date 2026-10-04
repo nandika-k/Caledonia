@@ -45,6 +45,7 @@ function Index() {
     csrf_token: string;
   } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchIndex, setActiveSearchIndex] = useState(0);
@@ -93,6 +94,27 @@ function Index() {
   }, [ensureVolunteer]);
 
   const userId = auth?.google_sub;
+  const handleLogout = async () => {
+    if (!auth || loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const response = await fetch("/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "X-CSRF-Token": auth.csrf_token },
+      });
+      if (!response.ok) throw new Error("Could not log out. Please try again.");
+      setAuth(null);
+      setProfileId(null);
+      setAddOpen(false);
+      setCard(null);
+      toast.success("You have been logged out.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not log out. Please try again.");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
   const me = userId ? volunteers.find((v) => v.id === userId) : undefined;
   const profile = volunteers.find((v) => v.id === profileId) ?? null;
   const cardV = card ? (volunteers.find((v) => v.id === card.v.id) ?? card.v) : null;
@@ -397,6 +419,8 @@ function Index() {
       <ProfilePanel
         volunteer={profile}
         isMe={profileId === userId}
+        onLogout={handleLogout}
+        loggingOut={loggingOut}
         onClose={() => setProfileId(null)}
       />
       <Toaster
