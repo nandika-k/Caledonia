@@ -8,6 +8,7 @@ import math
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
+from urllib.parse import urlsplit, urlunsplit
 
 from authlib.integrations.flask_client import OAuth
 from authlib.integrations.base_client.errors import OAuthError
@@ -108,14 +109,23 @@ def create_app() -> Flask:
         callback_url = os.environ.get(
             "OAUTH_REDIRECT_URI", url_for("auth_callback", _external=True)
         )
+        callback = urlsplit(callback_url)
+        # A host-only session cookie must be issued on the callback's host.
+        # Azure's default hostname remains reachable beside the custom domain.
+        if callback.netloc and request.host.lower() != callback.netloc.lower():
+            response = redirect(urlunsplit((callback.scheme, callback.netloc, "/auth/login", "", "")))
+            response.headers["Cache-Control"] = "no-store"
+            return response
         # `hd` filters the account chooser. The callback independently checks
         # the signed ID token claim, which is the actual access restriction.
         try:
-            return google_client().authorize_redirect(
+            response = google_client().authorize_redirect(
                 callback_url,
                 hd=NJIT_DOMAIN,
                 prompt="select_account",
             )
+            response.headers["Cache-Control"] = "no-store"
+            return response
         except RequestException as error:
             return sign_in_failed(503, type(error).__name__)
 

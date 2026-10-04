@@ -60,6 +60,11 @@ search for `Google sign-in failed id=` and that ID. `MismatchingStateError`
 indicates that the callback state did not match the browser session; check for
 replayed/expired callbacks, missing cookies, or differing `SECRET_KEY` settings
 across instances. Keep one stable secret across instances and deployments.
+Use the same public hostname in `FRONTEND_URL` and `OAUTH_REDIRECT_URI`.
+For Caledonia, use `https://caledonia.garden/` and
+`https://caledonia.garden/auth/callback`. A login started on the Azure hostname
+cannot send its host-only state cookie to the custom-domain callback. The login
+route redirects to the configured callback host before creating state.
 Never disable OAuth state or nonce validation to work around this error.
 
 Network failures return 503; OAuth/token validation failures return 400. Start
