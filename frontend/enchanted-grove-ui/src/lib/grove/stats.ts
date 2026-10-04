@@ -1,4 +1,11 @@
-import { getMilestones, getTreeLevel } from "./config";
+import {
+  ACTIVITY_TYPES,
+  FLOWER_HOURS,
+  flowerCategory,
+  getMilestones,
+  getTreeLevel,
+  type ActivityType,
+} from "./config";
 import type { Activity, GroveData, Volunteer } from "./types";
 
 export function computeStreak(dates: string[], today: string): number {
@@ -23,13 +30,28 @@ export function deriveVolunteers(data: GroveData, today: string): Volunteer[] {
   return data.volunteers.map((v) => {
     const acts = byUser.get(v.id) ?? [];
     const hours = Math.round(acts.reduce((s, a) => s + a.hours, 0) * 10) / 10;
+    const categoryHours = Object.fromEntries(ACTIVITY_TYPES.map((type) => [type, 0])) as Record<
+      ActivityType,
+      number
+    >;
+    for (const activity of acts) {
+      const category = flowerCategory(activity.activityType);
+      if (category) categoryHours[category] += Math.round(activity.hours * 10);
+    }
+    const flowers = Object.fromEntries(
+      ACTIVITY_TYPES.map((type) => [type, Math.floor(categoryHours[type] / (FLOWER_HOURS * 10))]),
+    ) as Record<ActivityType, number>;
     return {
       ...v,
       volunteerHours: hours,
       activityCount: acts.length,
-      currentStreak: computeStreak(acts.map((a) => a.date), today),
+      currentStreak: computeStreak(
+        acts.map((a) => a.date),
+        today,
+      ),
       milestones: getMilestones(hours).map((m) => m.id),
       treeLevel: getTreeLevel(hours).level,
+      flowers,
     };
   });
 }
@@ -37,7 +59,9 @@ export function deriveVolunteers(data: GroveData, today: string): Volunteer[] {
 export function groveStats(data: GroveData, today: string) {
   const total = data.activities.reduce((s, a) => s + a.hours, 0);
   const month = today.slice(0, 7);
-  const thisMonth = data.activities.filter((a) => a.date.startsWith(month)).reduce((s, a) => s + a.hours, 0);
+  const thisMonth = data.activities
+    .filter((a) => a.date.startsWith(month))
+    .reduce((s, a) => s + a.hours, 0);
   const before = total - thisMonth;
   return {
     volunteers: data.volunteers.length,

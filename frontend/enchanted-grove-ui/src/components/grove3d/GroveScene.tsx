@@ -4,7 +4,9 @@ import { OrbitControls, Sparkles, Stars } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { Volunteer } from "@/lib/grove/types";
+import { getTreeLevel, getTreeScale } from "@/lib/grove/config";
 import { ForestTrees } from "./Tree3D";
+import { RotateCcw, RotateCw } from "lucide-react";
 
 const SIZE_X = 64;
 const SIZE_Z = 44;
@@ -32,34 +34,6 @@ function Instanced({ geometry, material, items }: { geometry: THREE.BufferGeomet
     ref.current!.instanceMatrix.needsUpdate = true;
   }, [items]);
   return <instancedMesh ref={ref} args={[geometry, material, items.length]} castShadow receiveShadow />;
-}
-
-function pathCurve(points: [number, number][]) {
-  return new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, 0.02, z)));
-}
-
-function PathRibbon({ curve, width }: { curve: THREE.CatmullRomCurve3; width: number }) {
-  const geometry = useMemo(() => {
-    const pts = curve.getPoints(120);
-    const pos: number[] = [];
-    const idx: number[] = [];
-    pts.forEach((p, i) => {
-      const t = curve.getTangent(i / 120);
-      const n = new THREE.Vector3(-t.z, 0, t.x).normalize().multiplyScalar(width / 2);
-      pos.push(p.x + n.x, 0.03, p.z + n.z, p.x - n.x, 0.03, p.z - n.z);
-      if (i < pts.length - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
-    });
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    return g;
-  }, [curve, width]);
-  return (
-    <mesh geometry={geometry} receiveShadow>
-      <meshStandardMaterial color="#3d3424" roughness={1} side={THREE.DoubleSide} />
-    </mesh>
-  );
 }
 
 function Environment() {
@@ -105,21 +79,12 @@ function Environment() {
     [],
   );
 
-  const paths = useMemo(
-    () => [
-      pathCurve([[0, 30], [-4, 14], [5, 4], [0, -6], [-9, -14], [-3, -26]]),
-      pathCurve([[-40, 6], [-20, 1], [-6, 6], [0, 2], [14, -4], [40, -2]]),
-    ],
-    [],
-  );
-
   return (
     <>
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <circleGeometry args={[80, 64]} />
         <meshStandardMaterial color="#24432e" roughness={1} />
       </mesh>
-      {paths.map((c, i) => <PathRibbon key={i} curve={c} width={i ? 2 : 2.8} />)}
       <Instanced geometry={g.rock} material={m.rock} items={scene.rocks} />
       <Instanced geometry={g.stem} material={m.stem} items={scene.mushStems} />
       <Instanced geometry={g.cap} material={m.cap} items={scene.mushStems} />
@@ -155,7 +120,9 @@ function CameraRig({ controls, focus }: { controls: React.RefObject<OrbitControl
   const goal = useRef<{ t: THREE.Vector3; c: THREE.Vector3 } | null>(null);
   useEffect(() => {
     if (!focus) return;
-    goal.current = { t: focus.clone().setY(2), c: focus.clone().add(new THREE.Vector3(0, 13, 20)) };
+    const treeHeight = Math.max(2, focus.y * 2);
+    const distance = treeHeight * 1.5 + 2;
+    goal.current = { t: focus.clone(), c: focus.clone().add(new THREE.Vector3(0, distance * 0.42, distance)) };
   }, [focus]);
   useFrame((state, dt) => {
     const c = controls.current;
@@ -184,9 +151,20 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
   const focus = useMemo(() => {
     if (!focusId) return null;
     const v = volunteers.find((x) => x.id === focusId.split(":")[0]);
-    return v ? new THREE.Vector3(...toWorld(v)) : null;
+    if (!v) return null;
+    const level = getTreeLevel(v.volunteerHours).level;
+    const nominalHeight = { seedling: 2.3, small: 3.8, growing: 4.6, mature: 5.2, enchanted: 6 }[level];
+    const height = nominalHeight * getTreeScale(v.volunteerHours) * 1.15;
+    const [x, , z] = toWorld(v);
+    return new THREE.Vector3(x, height * 0.52, z);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId]);
+  const rotateView = (direction: -1 | 1) => {
+    const orbit = controls.current;
+    if (!orbit) return;
+    orbit.setAzimuthalAngle(orbit.getAzimuthalAngle() - direction * Math.PI / 4);
+    orbit.update();
+  };
 
   useEffect(() => {
     document.body.style.cursor = hover ? "pointer" : "";
@@ -238,7 +216,7 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
           makeDefault
           enableDamping
           dampingFactor={0.08}
-          minDistance={6}
+          minDistance={4}
           maxDistance={85}
           maxPolarAngle={Math.PI / 2.15}
           minPolarAngle={0.2}
@@ -249,6 +227,15 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
         <CameraRig controls={controls} focus={focus} />
       </Canvas>
       <div className="fog pointer-events-none absolute inset-0" />
+      <div className="glass pointer-events-auto absolute bottom-6 right-6 z-10 flex items-center gap-2 rounded-full p-1.5" aria-label="Rotate grove view">
+        <button type="button" onClick={() => rotateView(-1)} aria-label="Rotate view left" title="Rotate view left" className="rounded-full p-2.5 text-foreground hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+          <RotateCcw className="h-4 w-4" />
+        </button>
+        <span className="px-1 text-xs text-muted-foreground">Orbit</span>
+        <button type="button" onClick={() => rotateView(1)} aria-label="Rotate view right" title="Rotate view right" className="rounded-full p-2.5 text-foreground hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+          <RotateCw className="h-4 w-4" />
+        </button>
+      </div>
       {hover && (
         <div className="glass pointer-events-none fixed z-30 rounded-xl px-4 py-3 text-sm" style={{ left: hover.x + 16, top: hover.y + 16 }}>
           <div className="font-display text-lg text-foreground">🌳 {hover.v.name}</div>
@@ -257,7 +244,7 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
         </div>
       )}
       <div className="glass pointer-events-none absolute bottom-6 left-8 z-10 hidden rounded-xl px-3 py-2 text-[11px] text-muted-foreground md:block">
-        Drag to orbit · Right-drag to pan · Scroll to zoom
+        Drag to orbit · Use Orbit buttons to turn · Scroll to zoom
       </div>
     </div>
   );

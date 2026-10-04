@@ -1,4 +1,5 @@
 import { ACTIVITY_TYPES } from "./config";
+import { MIN_TREE_SPACING } from "./layout";
 import type { Activity, GroveData, VolunteerRecord } from "./types";
 
 function mulberry32(seed: number) {
@@ -12,12 +13,13 @@ function mulberry32(seed: number) {
 }
 
 const SEED: [string, number][] = [
-  ["Saanvi", 24.5], ["Alex", 8], ["Priya", 42], ["Maya", 15], ["Daniel", 3],
-  ["Sarah", 31], ["Jordan", 12], ["Aisha", 52], ["Leah", 0], ["Nina", 19],
-  ["Omar", 6], ["Grace", 27], ["Ivy", 2], ["Zara", 36], ["Ethan", 9],
-  ["Mei", 22], ["Rosa", 4], ["Kiara", 14], ["Noah", 0], ["Fatima", 45],
-  ["Lily", 11], ["Sofia", 17], ["Hannah", 1.5], ["Ananya", 33], ["Chloe", 7],
-  ["Ruby", 26], ["Jasmine", 5], ["Elena", 60],
+  ["Saanvi", 24.5], ["Jen", 8], ["Hannah", 42], ["Prajwal", 15], ["Tyler", 3],
+  ["Assaf", 31], ["Simon", 12], ["Cela", 52], ["Nidhi", 1], ["Patchi", 19],
+  ["Andrew Gykobo", 10], ["Yash Shah", 27], ["Mengjia Xu", 2], ["Lei Zhang", 36], ["Keita Ohshiro", 9],
+  ["Matt Toegel", 22], ["Jaini Bhavsar", 4], ["Shuai Zhang", 14], ["Sheshananda  Kandula", 0], ["Mahendar Mangalasri", 45],
+  ["Wen He", 11], ["Adam Spryszynski", 17], ["Rosemina Vohra", 1.5], ["Bharat Lohiya", 33], ["Omar Woodruff", 27],
+  ["Alice Woodruff", 27], ["Pantelis Monogioudis", 12], ["Thomas Licciardello", 32], ["Pradeep Vontisubramanyam", 24],
+  ["Kamlesh Naik", 30], ["DJ Kehoe", 28], ["Jennifer Farley", 23], ["Keith Williams", 28]
 ];
 
 export function createMockGrove(): GroveData {
@@ -32,7 +34,7 @@ export function createMockGrove(): GroveData {
     for (let tries = 0; tries < 60; tries++) {
       x = 0.08 + rand() * 0.84;
       y = 0.18 + rand() * 0.72;
-      if (placed.every((p) => Math.hypot(p.x - x, (p.y - y) * 1.5) > 0.11)) break;
+      if (placed.every((p) => Math.hypot(p.x - x, (p.y - y) * 1.5) >= MIN_TREE_SPACING)) break;
     }
     if (name === "Saanvi") { x = 0.5; y = 0.55; }
     placed.push({ x, y });
