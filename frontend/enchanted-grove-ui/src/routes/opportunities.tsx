@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { VineFrame, VinesBackground } from "@/components/VinesBackground";
 import { getOpportunities } from "@/lib/opportunities/service";
+import { NewarkOpportunities } from "@/components/NewarkOpportunities";
 import {
   applyFilters,
   CATEGORY_META,
@@ -107,7 +108,10 @@ function OpportunitiesPage() {
           </p>
         </section>
 
-        <section className="glass mt-8 rounded-2xl p-4 md:p-5" aria-label="Search and filters">
+        <NewarkOpportunities />
+
+        <h2 className="mt-10 font-display text-3xl">Campus & event opportunities</h2>
+        <section className="glass mt-4 rounded-2xl p-4 md:p-5" aria-label="Search and filters">
           <input
             type="search"
             value={filters.query}
