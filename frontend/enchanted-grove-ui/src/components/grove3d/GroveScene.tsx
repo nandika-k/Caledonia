@@ -2,15 +2,23 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Sparkles, Stars } from "@react-three/drei";
 import * as THREE from "three";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { Volunteer } from "@/lib/grove/types";
 import { getTreeLevel, getTreeScale } from "@/lib/grove/config";
+import { SPRING_POSITION } from "@/lib/grove/placement";
 import { ForestTrees } from "./Tree3D";
+import { Waterfall } from "./Waterfall3D";
+import { DeerHerd } from "./Deer3D";
 import { RotateCcw, RotateCw } from "lucide-react";
+
+type OrbitControlsImpl = React.ComponentRef<typeof OrbitControls>;
 
 const SIZE_X = 64;
 const SIZE_Z = 44;
-export const toWorld = (v: { x: number; y: number }): [number, number, number] => [(v.x - 0.5) * SIZE_X, 0, (v.y - 0.5) * SIZE_Z];
+export const toWorld = (v: { x: number; y: number }): [number, number, number] => [
+  (v.x - 0.5) * SIZE_X,
+  0,
+  (v.y - 0.5) * SIZE_Z,
+];
 
 function rng(seed: number) {
   return () => {
@@ -20,7 +28,15 @@ function rng(seed: number) {
 }
 
 /** Instanced decoration: one draw call per kind, no matter how many. */
-function Instanced({ geometry, material, items }: { geometry: THREE.BufferGeometry; material: THREE.Material; items: { p: [number, number, number]; s: number; r: number }[] }) {
+function Instanced({
+  geometry,
+  material,
+  items,
+}: {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  items: { p: [number, number, number]; s: number; r: number }[];
+}) {
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
     const m = new THREE.Object3D();
@@ -33,18 +49,34 @@ function Instanced({ geometry, material, items }: { geometry: THREE.BufferGeomet
     });
     ref.current!.instanceMatrix.needsUpdate = true;
   }, [items]);
-  return <instancedMesh ref={ref} args={[geometry, material, items.length]} castShadow receiveShadow />;
+  return (
+    <instancedMesh ref={ref} args={[geometry, material, items.length]} castShadow receiveShadow />
+  );
 }
 
-function Environment() {
+function Environment({
+  volunteers,
+  focus,
+}: {
+  volunteers: Volunteer[];
+  focus: THREE.Vector3 | null;
+}) {
   const scene = useMemo(() => {
     const r = rng(7);
     const scatter = (n: number, s0: number, s1: number, y = 0) =>
-      Array.from({ length: n }, () => ({ p: [(r() - 0.5) * SIZE_X * 1.3, y, (r() - 0.5) * SIZE_Z * 1.3] as [number, number, number], s: s0 + r() * (s1 - s0), r: r() * 6.28 }));
+      Array.from({ length: n }, () => ({
+        p: [(r() - 0.5) * SIZE_X * 1.3, y, (r() - 0.5) * SIZE_Z * 1.3] as [number, number, number],
+        s: s0 + r() * (s1 - s0),
+        r: r() * 6.28,
+      }));
     const ring = Array.from({ length: 90 }, (_, i) => {
       const a = (i / 90) * Math.PI * 2;
       const rad = 46 + r() * 14;
-      return { p: [Math.cos(a) * rad * 1.15, 0, Math.sin(a) * rad * 0.85] as [number, number, number], s: 2.2 + r() * 2.2, r: r() * 6 };
+      return {
+        p: [Math.cos(a) * rad * 1.15, 0, Math.sin(a) * rad * 0.85] as [number, number, number],
+        s: 2.2 + r() * 2.2,
+        r: r() * 6,
+      };
     });
     return {
       rocks: scatter(40, 0.3, 0.9),
@@ -52,7 +84,15 @@ function Environment() {
       flowers: scatter(220, 0.6, 1.3, 0.12),
       grass: scatter(500, 0.6, 1.4),
       ring,
-      lanterns: [[-14, -4], [2, -9], [16, 2], [-6, 10], [10, 13], [-24, 7], [24, -10]] as [number, number][],
+      lanterns: [
+        [-14, -4],
+        [2, -9],
+        [16, 2],
+        [-6, 10],
+        [10, 13],
+        [-24, 7],
+        [24, -10],
+      ] as [number, number][],
     };
   }, []);
 
@@ -60,7 +100,11 @@ function Environment() {
     () => ({
       rock: new THREE.DodecahedronGeometry(1, 0),
       stem: new THREE.CylinderGeometry(0.08, 0.1, 0.4, 6).translate(0, 0.2, 0),
-      cap: new THREE.SphereGeometry(0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.38, 0),
+      cap: new THREE.SphereGeometry(0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(
+        0,
+        0.38,
+        0,
+      ),
       flower: new THREE.IcosahedronGeometry(0.1, 0),
       grass: new THREE.ConeGeometry(0.05, 0.5, 3).translate(0, 0.25, 0),
       pine: new THREE.ConeGeometry(1.1, 3.5, 7).translate(0, 2.6, 0),
@@ -71,13 +115,31 @@ function Environment() {
     () => ({
       rock: new THREE.MeshStandardMaterial({ color: "#3b4448", roughness: 1, flatShading: true }),
       stem: new THREE.MeshStandardMaterial({ color: "#e8dcc0" }),
-      cap: new THREE.MeshStandardMaterial({ color: "#a77bff", emissive: "#7a4fe0", emissiveIntensity: 0.9 }),
-      flower: new THREE.MeshStandardMaterial({ color: "#c9a6ff", emissive: "#8f66ff", emissiveIntensity: 1.4 }),
+      cap: new THREE.MeshStandardMaterial({
+        color: "#a77bff",
+        emissive: "#7a4fe0",
+        emissiveIntensity: 0.9,
+      }),
+      flower: new THREE.MeshStandardMaterial({
+        color: "#c9a6ff",
+        emissive: "#8f66ff",
+        emissiveIntensity: 1.4,
+      }),
       grass: new THREE.MeshStandardMaterial({ color: "#1f5a3a", flatShading: true }),
       pine: new THREE.MeshStandardMaterial({ color: "#173d31", flatShading: true, roughness: 1 }),
     }),
     [],
   );
+  const treePoints = useMemo(
+    () =>
+      volunteers.map((volunteer) => {
+        const [x, , z] = toWorld(volunteer);
+        return { x, z };
+      }),
+    [volunteers],
+  );
+  const rockPoints = useMemo(() => scene.rocks.map(({ p }) => ({ x: p[0], z: p[2] })), [scene]);
+  const focusPoint = focus ? { x: focus.x, z: focus.z } : null;
 
   return (
     <>
@@ -91,6 +153,7 @@ function Environment() {
       <Instanced geometry={g.flower} material={m.flower} items={scene.flowers} />
       <Instanced geometry={g.grass} material={m.grass} items={scene.grass} />
       <Instanced geometry={g.pine} material={m.pine} items={scene.ring} />
+      <DeerHerd trees={treePoints} rocks={rockPoints} focus={focusPoint} />
       {scene.lanterns.map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
           <mesh position-y={0.9} castShadow>
@@ -110,19 +173,42 @@ function Environment() {
         <meshBasicMaterial color="#fff6d8" />
       </mesh>
       <Stars radius={120} depth={30} count={1500} factor={3} fade speed={0.4} />
-      <Sparkles count={160} scale={[SIZE_X, 8, SIZE_Z]} position-y={3} size={4} speed={0.35} color="#ffd77a" />
-      <Sparkles count={60} scale={[SIZE_X, 4, SIZE_Z]} position-y={1.5} size={3} speed={0.2} color="#b48cff" />
+      <Sparkles
+        count={160}
+        scale={[SIZE_X, 8, SIZE_Z]}
+        position-y={3}
+        size={4}
+        speed={0.35}
+        color="#ffd77a"
+      />
+      <Sparkles
+        count={60}
+        scale={[SIZE_X, 4, SIZE_Z]}
+        position-y={1.5}
+        size={3}
+        speed={0.2}
+        color="#b48cff"
+      />
     </>
   );
 }
 
-function CameraRig({ controls, focus }: { controls: React.RefObject<OrbitControlsImpl | null>; focus: THREE.Vector3 | null }) {
+function CameraRig({
+  controls,
+  focus,
+}: {
+  controls: React.RefObject<OrbitControlsImpl | null>;
+  focus: THREE.Vector3 | null;
+}) {
   const goal = useRef<{ t: THREE.Vector3; c: THREE.Vector3 } | null>(null);
   useEffect(() => {
     if (!focus) return;
     const treeHeight = Math.max(2, focus.y * 2);
     const distance = treeHeight * 1.5 + 2;
-    goal.current = { t: focus.clone(), c: focus.clone().add(new THREE.Vector3(0, distance * 0.42, distance)) };
+    goal.current = {
+      t: focus.clone(),
+      c: focus.clone().add(new THREE.Vector3(0, distance * 0.42, distance)),
+    };
   }, [focus]);
   useFrame((state, dt) => {
     const c = controls.current;
@@ -141,11 +227,23 @@ interface Props {
   growingId: string | null;
   focusId: string | null;
   selectedId: string | null;
+  waterPlaying: boolean;
+  waterSpeed: number;
   onSelect: (v: Volunteer, pt: { x: number; y: number }) => void;
   onBackground: () => void;
 }
 
-export default function GroveScene({ volunteers, currentUserId, growingId, focusId, selectedId, onSelect, onBackground }: Props) {
+export default function GroveScene({
+  volunteers,
+  currentUserId,
+  growingId,
+  focusId,
+  selectedId,
+  waterPlaying,
+  waterSpeed,
+  onSelect,
+  onBackground,
+}: Props) {
   const controls = useRef<OrbitControlsImpl>(null);
   const [hover, setHover] = useState<{ v: Volunteer; x: number; y: number } | null>(null);
   const focus = useMemo(() => {
@@ -153,7 +251,9 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
     const v = volunteers.find((x) => x.id === focusId.split(":")[0]);
     if (!v) return null;
     const level = getTreeLevel(v.volunteerHours).level;
-    const nominalHeight = { seedling: 2.3, small: 3.8, growing: 4.6, mature: 5.2, enchanted: 6 }[level];
+    const nominalHeight = { seedling: 2.3, small: 3.8, growing: 4.6, mature: 5.2, enchanted: 6 }[
+      level
+    ];
     const height = nominalHeight * getTreeScale(v.volunteerHours) * 1.15;
     const [x, , z] = toWorld(v);
     return new THREE.Vector3(x, height * 0.52, z);
@@ -162,13 +262,15 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
   const rotateView = (direction: -1 | 1) => {
     const orbit = controls.current;
     if (!orbit) return;
-    orbit.setAzimuthalAngle(orbit.getAzimuthalAngle() - direction * Math.PI / 4);
+    orbit.setAzimuthalAngle(orbit.getAzimuthalAngle() - (direction * Math.PI) / 4);
     orbit.update();
   };
 
   useEffect(() => {
     document.body.style.cursor = hover ? "pointer" : "";
-    return () => { document.body.style.cursor = ""; };
+    return () => {
+      document.body.style.cursor = "";
+    };
   }, [hover]);
 
   return (
@@ -196,21 +298,39 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
           shadow-camera-bottom={-35}
           shadow-bias={-0.0005}
         />
-        <Environment />
+        <Environment volunteers={volunteers} focus={focus} />
+        <Waterfall position={SPRING_POSITION} playing={waterPlaying} speed={waterSpeed} />
         <Suspense fallback={null}>
           <ForestTrees
             volunteers={volunteers}
             currentUserId={currentUserId}
-            onHover={(vol, e) => setHover(vol && e ? { v: vol, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } : null)}
-            onClick={(vol, e) => onSelect(vol, { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY })}
+            onHover={(vol, e) =>
+              setHover(
+                vol && e ? { v: vol, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } : null,
+              )
+            }
+            onClick={(vol, e) =>
+              onSelect(vol, { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY })
+            }
             selectedId={selectedId}
             growingId={growingId}
           />
         </Suspense>
-        {growingId && (() => {
-          const v = volunteers.find((x) => x.id === growingId);
-          return v ? <Sparkles key={`burst-${growingId}`} count={70} scale={[4, 7, 4]} position={[toWorld(v)[0], 3.5, toWorld(v)[2]]} size={9} speed={2.5} color="#b6f04a" /> : null;
-        })()}
+        {growingId &&
+          (() => {
+            const v = volunteers.find((x) => x.id === growingId);
+            return v ? (
+              <Sparkles
+                key={`burst-${growingId}`}
+                count={70}
+                scale={[4, 7, 4]}
+                position={[toWorld(v)[0], 3.5, toWorld(v)[2]]}
+                size={9}
+                speed={2.5}
+                color="#b6f04a"
+              />
+            ) : null;
+          })()}
         <OrbitControls
           ref={controls}
           makeDefault
@@ -227,17 +347,35 @@ export default function GroveScene({ volunteers, currentUserId, growingId, focus
         <CameraRig controls={controls} focus={focus} />
       </Canvas>
       <div className="fog pointer-events-none absolute inset-0" />
-      <div className="glass pointer-events-auto absolute bottom-6 right-6 z-10 flex items-center gap-2 rounded-full p-1.5" aria-label="Rotate grove view">
-        <button type="button" onClick={() => rotateView(-1)} aria-label="Rotate view left" title="Rotate view left" className="rounded-full p-2.5 text-foreground hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+      <div
+        className="glass pointer-events-auto absolute bottom-6 right-6 z-10 flex items-center gap-2 rounded-full p-1.5"
+        aria-label="Rotate grove view"
+      >
+        <button
+          type="button"
+          onClick={() => rotateView(-1)}
+          aria-label="Rotate view left"
+          title="Rotate view left"
+          className="rounded-full p-2.5 text-foreground hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        >
           <RotateCcw className="h-4 w-4" />
         </button>
         <span className="px-1 text-xs text-muted-foreground">Orbit</span>
-        <button type="button" onClick={() => rotateView(1)} aria-label="Rotate view right" title="Rotate view right" className="rounded-full p-2.5 text-foreground hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+        <button
+          type="button"
+          onClick={() => rotateView(1)}
+          aria-label="Rotate view right"
+          title="Rotate view right"
+          className="rounded-full p-2.5 text-foreground hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        >
           <RotateCw className="h-4 w-4" />
         </button>
       </div>
       {hover && (
-        <div className="glass pointer-events-none fixed z-30 rounded-xl px-4 py-3 text-sm" style={{ left: hover.x + 16, top: hover.y + 16 }}>
+        <div
+          className="glass pointer-events-none fixed z-30 rounded-xl px-4 py-3 text-sm"
+          style={{ left: hover.x + 16, top: hover.y + 16 }}
+        >
           <div className="font-display text-lg text-foreground">🌳 {hover.v.name}</div>
           <div className="text-lavender">{hover.v.volunteerHours} volunteer hours</div>
           <div className="text-muted-foreground">{hover.v.activityCount} activities</div>

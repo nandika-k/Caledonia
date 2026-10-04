@@ -8,6 +8,7 @@ import type { ActivityType } from "@/lib/grove/config";
 import type { Volunteer } from "@/lib/grove/types";
 import { AddHoursModal, type ActivitySubmission } from "@/components/grove/AddHoursModal";
 import { FlowerBreakdown } from "@/components/grove/FlowerBreakdown";
+import { FountainControls } from "@/components/grove/FountainControls";
 import { ProfilePanel } from "@/components/grove/ProfilePanel";
 
 const GroveScene = lazy(() => import("@/components/grove3d/GroveScene"));
@@ -51,7 +52,18 @@ function Index() {
   const [growingId, setGrowingId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [waterPlaying, setWaterPlaying] = useState(true);
+  const [waterSpeed, setWaterSpeed] = useState(1);
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (preference.matches) setWaterPlaying(false);
+    const pauseForReducedMotion = (event: MediaQueryListEvent) => {
+      if (event.matches) setWaterPlaying(false);
+    };
+    preference.addEventListener("change", pauseForReducedMotion);
+    return () => preference.removeEventListener("change", pauseForReducedMotion);
+  }, []);
   useEffect(() => {
     let alive = true;
     fetch("/api/me", { credentials: "same-origin" })
@@ -163,6 +175,8 @@ function Index() {
             selectedId={card?.v.id ?? focus?.id ?? null}
             growingId={growingId}
             focusId={focus ? `${focus.id}:${focus.n}` : null}
+            waterPlaying={waterPlaying}
+            waterSpeed={waterSpeed}
             onSelect={(v, p) => setCard({ v, x: p.x, y: p.y })}
             onBackground={() => setCard(null)}
           />
@@ -171,6 +185,13 @@ function Index() {
         <GroveLoading />
       )}
 
+      <FountainControls
+        playing={waterPlaying}
+        onPlayingChange={setWaterPlaying}
+        speed={waterSpeed}
+        onSpeedChange={setWaterSpeed}
+      />
+
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-border/60 bg-gradient-to-b from-background/80 to-transparent px-5 py-4 md:px-10">
         <h1 className="font-display-sc text-xl tracking-[0.18em] text-foreground md:text-2xl">
           🌳 Caledonia
@@ -178,9 +199,14 @@ function Index() {
         <nav className="pointer-events-auto flex items-center gap-2">
           <Link
             to="/opportunities"
-            className="rounded-full px-4 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary"
+            aria-label="Volunteer opportunities"
+            title="Volunteer opportunities"
+            className="rounded-full px-3 py-2 text-sm tracking-wide text-foreground/90 hover:text-primary md:px-4"
           >
-            Opportunities
+            <span className="md:hidden" aria-hidden="true">
+              🌿
+            </span>
+            <span className="hidden md:inline">Opportunities</span>
           </Link>
           {auth && (
             <button
@@ -191,20 +217,26 @@ function Index() {
             </button>
           )}
           {auth ? (
-            <button onClick={() => setAddOpen(true)} className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide">
+            <button
+              onClick={() => setAddOpen(true)}
+              className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide"
+            >
               🌱 Add Hours
             </button>
           ) : (
-            <a href="/auth/login" className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide">
+            <a
+              href="/auth/login"
+              className="btn-lime rounded-full px-4 py-2 text-sm font-normal tracking-wide"
+            >
               {authLoading ? "Checking sign-in…" : "Sign in to add hours"}
             </a>
           )}
         </nav>
       </header>
 
-      <div className="pointer-events-auto absolute left-1/2 top-[5rem] z-30 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2">
-        <div className="glass flex items-center gap-2 rounded-full px-4">
-          <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="pointer-events-auto absolute left-1/2 top-[5rem] z-30 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2">
+        <div className="glass-strong flex items-center gap-3 rounded-full border border-primary/50 px-5 shadow-[0_0_24px_-8px_var(--lime)] transition focus-within:border-primary focus-within:shadow-[0_0_30px_-6px_var(--lime)]">
+          <Search aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
           <input
             type="search"
             role="combobox"
@@ -212,7 +244,7 @@ function Index() {
             aria-autocomplete="list"
             aria-expanded={searchQuery.trim().length > 0}
             aria-controls="volunteer-search-results"
-            placeholder="Find a volunteer..."
+            placeholder="Search volunteers by name..."
             value={searchQuery}
             onChange={(event) => {
               setSearchQuery(event.target.value);
@@ -235,7 +267,7 @@ function Index() {
                 selectSearchResult(searchResults[activeSearchIndex]);
               }
             }}
-            className="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="h-12 min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-foreground/70"
           />
           {searchQuery && (
             <button

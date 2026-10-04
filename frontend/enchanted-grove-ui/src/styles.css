@@ -35,6 +35,11 @@
   --color-lavender: var(--lavender);
   --color-gold: var(--gold);
   --color-lime: var(--lime);
+  --color-vine: var(--vine);
+  --color-canopy: var(--canopy);
+  --color-canopy-dark: var(--canopy-dark);
+  --color-canopy-light: var(--canopy-light);
+  --color-bark: var(--bark);
   --color-overlay: var(--overlay);
 }
 
@@ -63,6 +68,7 @@
   --overlay: oklch(0.08 0.02 165 / 55%);
 
   --lime: oklch(0.87 0.21 128);
+  --vine: oklch(0.55 0.09 185);
   --lavender: oklch(0.76 0.13 300);
   --blossom: oklch(0.8 0.1 340);
   --gold: oklch(0.86 0.13 85);
@@ -90,6 +96,19 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -170,3 +189,12 @@
 
 @keyframes fab-pulse { 0%, 100% { box-shadow: 0 0 30px -6px var(--lime); } 50% { box-shadow: 0 0 50px 0 var(--lime); } }
 .fab-pulse { animation: fab-pulse 3s ease-in-out infinite; }
+
+@keyframes vine-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+.vine-leaf { transform-box: fill-box; transform-origin: 50% 100%; }
+.group:hover .vine-leaf { animation: vine-sway 2.4s ease-in-out infinite; }
+.vine-leaf-glow { filter: drop-shadow(0 0 4px var(--lime)); }
+.group:hover .vine-leaf-glow { filter: drop-shadow(0 0 8px var(--lime)); }

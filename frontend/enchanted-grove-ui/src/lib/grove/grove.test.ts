@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ACTIVITY_TYPES, FLOWERS, getMilestones, getTreeLevel } from "./config";
 import { computeStreak, deriveVolunteers } from "./stats";
 import { MIN_TREE_SPACING, spaceVolunteers } from "./layout";
+import { isInSpringClearing, SPRING_POSITION } from "./placement";
 import type { Activity, GroveData } from "./types";
 
 describe("tree levels", () => {
@@ -92,6 +93,22 @@ describe("category flowers", () => {
 });
 
 describe("grove tree spacing", () => {
+  it("keeps volunteers outside the spring clearing", () => {
+    const [springX, , springZ] = SPRING_POSITION;
+    const [positioned] = spaceVolunteers([
+      {
+        id: "spring-neighbor",
+        name: "Spring Neighbor",
+        x: springX / 64 + 0.5,
+        y: springZ / 44 + 0.5,
+        joinedAt: "2026-01-01",
+      },
+    ]);
+
+    expect(positioned).toBeDefined();
+    expect(isInSpringClearing((positioned!.x - 0.5) * 64, (positioned!.y - 0.5) * 44)).toBe(false);
+  });
+
   it("moves colliding volunteer positions apart while keeping Saanvi anchored", () => {
     const positioned = spaceVolunteers([
       { id: "alex", name: "Alex", x: 0.5, y: 0.55, joinedAt: "2026-01-01" },
@@ -102,7 +119,12 @@ describe("grove tree spacing", () => {
     expect(positioned[1]).toMatchObject({ x: 0.5, y: 0.55 });
     for (let i = 0; i < positioned.length; i++) {
       for (let j = i + 1; j < positioned.length; j++) {
-        expect(Math.hypot(positioned[i]!.x - positioned[j]!.x, (positioned[i]!.y - positioned[j]!.y) * 1.5)).toBeGreaterThanOrEqual(MIN_TREE_SPACING);
+        expect(
+          Math.hypot(
+            positioned[i]!.x - positioned[j]!.x,
+            (positioned[i]!.y - positioned[j]!.y) * 1.5,
+          ),
+        ).toBeGreaterThanOrEqual(MIN_TREE_SPACING);
       }
     }
   });
