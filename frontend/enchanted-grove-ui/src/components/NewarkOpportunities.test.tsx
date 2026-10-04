@@ -9,8 +9,14 @@ describe("Newark volunteer discovery", () => {
     render(<NewarkOpportunities />);
     const search = screen.getByRole("searchbox", { name: "Search Newark programs" });
     fireEvent.change(search, { target: { value: "gardens" } });
-    expect(screen.getByText("Greater Newark Conservancy")).toBeInTheDocument();
-    expect(screen.queryByText("United Community Corporation")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Explore volunteering with Greater Newark Conservancy/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", {
+        name: /Explore volunteering with United Community Corporation/,
+      }),
+    ).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole("combobox", { name: "Cause" }), {
       target: { value: "Community support" },
     });
