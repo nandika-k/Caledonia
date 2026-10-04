@@ -25,7 +25,8 @@ RUN apt-get update \
 WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
-COPY app.py service_classifier.py ./
+COPY app.py db.py hours.py ingest.py ingest_discord.py normalize.py opportunities_scraper.py run_ingest.py run_sql.py service_classifier.py sync_opportunities.py ./
+COPY db/ ./db/
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY deploy/container-entrypoint.sh /app/container-entrypoint.sh
 RUN sed -i 's/\r$//' /app/container-entrypoint.sh \
