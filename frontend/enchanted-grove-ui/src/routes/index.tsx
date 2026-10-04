@@ -10,6 +10,7 @@ import { AddHoursModal, type ActivitySubmission } from "@/components/grove/AddHo
 import { FlowerBreakdown } from "@/components/grove/FlowerBreakdown";
 import { FountainControls } from "@/components/grove/FountainControls";
 import { ProfilePanel } from "@/components/grove/ProfilePanel";
+import { TreeInfoPopover } from "@/components/grove/TreeInfoPopover";
 
 const GroveScene = lazy(() => import("@/components/grove3d/GroveScene"));
 
@@ -341,25 +342,13 @@ function Index() {
       </p>
 
       {card && cardV && (
-        <div
-          className="glass-strong fixed z-30 w-60 rounded-2xl p-5 animate-scale-in"
-          style={{
-            left: Math.min(
-              card.x + 12,
-              (typeof window !== "undefined" ? window.innerWidth : 1200) - 260,
-            ),
-            top: Math.min(
-              card.y + 12,
-              (typeof window !== "undefined" ? window.innerHeight : 800) - 230,
-            ),
-          }}
-        >
+        <TreeInfoPopover x={card.x} y={card.y}>
           <div className="flex items-start justify-between">
-            <div className="font-display text-2xl">🌳 {cardV.name}</div>
+            <div className="min-w-0 font-display text-2xl">🌳 {cardV.name}</div>
             <button
               onClick={() => setCard(null)}
               aria-label="Close"
-              className="text-xl leading-none text-muted-foreground"
+              className="ml-2 shrink-0 text-xl leading-none text-muted-foreground"
             >
               ×
             </button>
@@ -396,7 +385,7 @@ function Index() {
           >
             View Profile
           </button>
-        </div>
+        </TreeInfoPopover>
       )}
 
       <AddHoursModal
