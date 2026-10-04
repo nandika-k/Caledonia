@@ -1,40 +1,19 @@
-# Gemini service classifier
+# Service classification
 
-The Flask endpoint `POST /api/classify-service` requires an NJIT Google sign-in and the session's CSRF token. It accepts an event name and description, calls `classify_service_hours` in `service_classifier.py`, and returns one category:
+Both `POST /api/classify-service` and `POST /api/activities` use `classify_service_hours` in `service_classifier.py`. Both require NJIT Google sign-in, the session CSRF token, and valid event name and description fields.
 
-- `research`
-- `tutoring`
-- `environmental`
-- `community service`
-- `management`
+Categories: `research`, `tutoring`, `environmental`, `community service`, `management`, and `miscellaneous`.
 
-Community service includes food donation, soup kitchens, NJIT HOUSE, and clothing donation. Management covers running a club or organizing an event. The classifier chooses based on the primary work described.
+Clear activity terms are classified locally without a provider request. For example, `tutoring` / `tutoring for SAT` returns `tutoring`. Rules use word boundaries; mixed category matches are left to Gemini to choose the primary work. These are keyword heuristics, not a full language parser.
 
-Set `GEMINI_API_KEY` in the private server `.env` file. Install the Python dependencies from the repository root with `python -m pip install -r requirements.txt`. Keep the key on Flask; do not put it in React code.
+Ambiguous activities use Gemini structured output when `GEMINI_API_KEY` or `GOOGLE_API_KEY` is configured on the server. `GEMINI_MODEL` overrides the default model. Requests use a 10-second HTTP timeout and one attempt. Keep credentials on the server, never in React.
 
-The React Add Hours form calls the Flask endpoint before saving its local preview activity. The endpoint needs Google sign-in and Gemini credentials to respond. The frontend's activity storage remains local demo storage; Tiger Data persistence is not connected yet.
-Community service covers direct volunteering and charitable support, including food donation, soup kitchens, NJIT HOUSE, and clothing donation. Management is separate and covers running a club, organizing an event, or coordinating an organization. The classifier chooses based on the primary work described.
+Missing credentials, API/network errors, empty responses, and invalid structured output return `miscellaneous` and log a server warning. This fallback lets hours submission continue; it is not a successful AI classification. Blank inputs still fail validation.
 
-## Setup
+Run offline tests:
 
-1. Get a Gemini API key from Google AI Studio.
-2. Add it as `GEMINI_API_KEY` in the server's private `.env` file. Do not put it in React code or commit it.
-3. Install the project dependencies in the active virtual environment:
-
-   ```powershell
-   python -m pip install -r requirements.txt
-   ```
-
-## Use from Flask
-
-```python
-from service_classifier import classify_service_hours
-
-category = classify_service_hours(
-    event_name="Campus garden cleanup",
-    description="Volunteers removed litter and cleared invasive plants.",
-)
-# category == "environmental"
+```powershell
+.\.venv312\Scripts\python.exe -m unittest test_service_classifier
 ```
 
-The method uses Gemini structured output to constrain the answer to the category enum. Keep API calls on the Flask server. Gemini calls need network access and a valid API key; the classifier has not been exercised against a live Gemini account in this workspace.
+The frontend saves returned activities in local demo storage. Classification does not add database persistence or verify volunteer hours. Live Gemini behavior has not been verified in this workspace.

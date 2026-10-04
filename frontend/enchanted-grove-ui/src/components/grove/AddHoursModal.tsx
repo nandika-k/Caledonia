@@ -71,7 +71,7 @@ export function AddHoursModal({ open, contactEmail, onClose, onSubmit }: Props) 
           <h2 id="add-title" className="font-display text-3xl text-foreground">Add Volunteer Hours</h2>
           <button type="button" onClick={onClose} disabled={submitting} aria-label="Close" className="text-2xl leading-none text-muted-foreground hover:text-foreground disabled:opacity-50">×</button>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">Gemini will place your activity in a Grove category.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Your activity will be placed in a Grove category.</p>
         <div className="mt-6 space-y-4">
           <label className="block">
             <span className="mb-1.5 block text-xs uppercase tracking-widest text-lavender">Event Name</span>

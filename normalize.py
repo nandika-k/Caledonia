@@ -29,7 +29,10 @@ def gemini_client() -> genai.Client:
     """Create Gemini only when social-post parsing needs it."""
     global _client
     if _client is None:
-        _client = genai.Client()  # reads GEMINI_API_KEY from the environment
+        # Own retries here so SDK retries cannot multiply our backoff loop.
+        _client = genai.Client(
+            http_options={"timeout": 30_000, "retry_options": {"attempts": 1}}
+        )  # reads GEMINI_API_KEY from the environment
     return _client
 
 
@@ -84,7 +87,7 @@ Post text:
 {post_text}
 """
     response = None
-    for attempt in range(5):                  # retry when Google is overloaded (503) or rate-limiting (429)
+    for attempt in range(3):  # bounded retries for temporary server failures
         try:
             response = gemini_client().models.generate_content(
                 model=MODEL,
@@ -97,10 +100,19 @@ Post text:
             )
             break
         except errors.APIError as e:
-            if e.code not in (429, 500, 503) or attempt == 4:
+            if e.code == 429:
+                # Daily quota exhaustion cannot be fixed by a short backoff.
+                # Stop the batch and leave its remaining posts pending.
+                print(
+                    "Gemini quota/rate limit reached (429); stopping ingestion. "
+                    "Retry after the provider's stated delay or adjust the API quota.",
+                    flush=True,
+                )
                 raise
-            wait = 2 ** attempt * 2           # 2, 4, 8, 16 seconds
-            print(f"Gemini busy ({e.code}); retrying in {wait}s...")
+            if e.code not in (500, 502, 503, 504) or attempt == 2:
+                raise
+            wait = 2 ** attempt * 2  # 2, 4 seconds
+            print(f"Gemini busy ({e.code}); retrying in {wait}s...", flush=True)
             time.sleep(wait)
     event = response.parsed
     if event is None or event.starts_at is None:

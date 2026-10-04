@@ -51,8 +51,9 @@ def ingest_pending_discord(limit: int = 100) -> dict:
         return {"processed": 0, "added": 0, "duplicate": 0, "skipped": 0, "failed": 0}
 
     counts = {"processed": 0, "added": 0, "duplicate": 0, "skipped": 0, "failed": 0}
-    for row in rows:
+    for index, row in enumerate(rows, start=1):
         message_id = row["message_id"]
+        print(f"Processing Discord post {index}/{len(rows)} ({message_id})...", flush=True)
         try:
             result = ingest_social([to_social_post(row)], source="discord")
         except Exception:
